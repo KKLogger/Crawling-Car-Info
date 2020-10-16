@@ -1,5 +1,6 @@
 from pandas.io.stata import precision_loss_doc
 import requests
+import selenium
 from selenium import webdriver
 from bs4 import BeautifulSoup as bs
 import pandas as pd
