@@ -1,3 +1,4 @@
 {
-    "python.pythonPath": "C:\\Users\\koc08\\anaconda3\\python.exe"
+    "python.pythonPath": "Crawling\\Scripts\\python.exe"
+    ,"files.autoSave": "onWindowChange"
 }
