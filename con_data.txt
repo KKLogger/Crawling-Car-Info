@@ -1,0 +1,272 @@
+
+{
+seller_info : {
+dealing : 매매
+company_name : 스마일자동차
+seller_name : 이경호
+company_add : 경기 시흥시 산기대학로 163
+company_phone number : 050-6212-5377
+},
+
+
+# car_option의 value는 포함, 미포함
+
+# 포함, 미포함
+car_option : {
+sun_roof : 포함			// 선루프
+head_lamp : 미포함			// 헤드램프
+power_powered_trunk : 미포함	// 파워 전동 트렁크
+ghost_door_closing : 		// 고스트 도어 클로징
+electrically-folded_side_mirror : 	// 전동접이 사이드 미러
+aluminium wheel : 			// 알류미늄 휠
+loop_rack : 			// 루프 랙
+heated_steering_wheel		// 열선 스티어링 휠
+motor_controlled_steering_wheel	// 전동 조절 스티어링 휠
+paddle_shift			// 패들 시프트
+steering wheel remote control	// 스티어링 휠 리모컨
+ECM Roommirror			// ECM 룸 미러
+high pass				// 하이패스
+power door lock			// 파워 도어록
+power steering wheel		// 파워 스티어링 휠
+power window			// 파워 윈도우
+airbag				// 에어백
+airbag (Side)			// 에어백(사이드)
+airbag (curtain)			// 에어백(커튼)
+anti-lock brake (ABS)		// 브레이크 잠김 방지(ABS)
+anti-slipping (TCS)			// 미끄럼 방지(TCS)
+body position control (ESC)		// 차체자세 제어장치(ESC)
+tire pressure sensor (TPMS)		// 타이어 공기압센서(TPMS)
+lane departure alarm system (LDWS)	// 차선이탈 경보 시스템(LDWS)
+electronic control suspension (ECS)	// 전자제어 서스펜션(ECS)
+parking detection sensor		// 주차감지센서
+rear side alert system		// 후측방 경보 시스템
+rear camera			// 후방 카메라
+360 degree around view		// 360도 어라운드 뷰
+cruise control			// 크루즈 컨트롤
+head up display (HUD)		// 헤드업 디스플레이(HUD)
+electric parking brake (EPB)		// 전자식 주차브레이크(EPB)
+automatic air conditioning		// 자동 어케컨
+smart key			// 스마트키
+radio door lock			// 무선도어 잠금장치
+rain rensor			// 레인센서
+otto wright			// 오토 라이트
+curtain/blind			// 커튼/블라인드
+navigation			// 네비게이션
+front seat AV monitor		// 앞좌석 AV 모니터
+rear seat AV monitor		// 뒷좌석 AV 모니터
+bluetooth			// 블루투스
+CD player			// CD 플레이어
+USB terminal			// UBS 플레이어
+AUX terminal			// AUX 단자
+leather seat			// 가죽 시트
+electric sheet			// 전동 시트
+electric seat (back seat)		// 전동시트(뒷좌석)
+heated sheet			// 열선시트
+memory sheets			// 메모리 시트
+ventilation sheet			// 통풍 시트
+ventilation seat (back seat)		// 통풍시트(뒷좌석)
+massage sheet			// 마사지 시트
+
+},
+
+
+# String
+used car performance register : {
+
+car name	
+			// 자동차 이름
+model year			// 연식
+Vehicle number			// 차량번호
+validity period of inspection		// 검사 유효 기간
+date of initial registration		// 최초 등록일
+transmission type			// 변속기 종류
+fuel used				// 사용 연료
+Car rental number			// 차대번호
+type of guarantee type		// 보증유형
+motor format			// 원동기 형식
+price-based price			// 가격 산정 기준 가격
+
+# 양호, 불량
+Distance instrument status		// 주행거리 계기상태
+
+# 많은, 보통, 적음, String(부가 설명)
+mileage				// 주행거리
+
+# 양호, null, String(부가 설명)
+Car loan number notation		// 차대번호 표기
+
+# string, String(부가 설명)
+Emission {			// 배출가스
+
+ex)
+일산화탄소
+탄화수소
+0.02%
+15ppm
+}
+
+# 없음, 있음, String(부가 설명)
+Tuning				// 튜닝
+Special History {}			// 특별 이력
+repurposing			// 용도 변경
+
+# String, String(부가 설명)
+Color {				// 색상
+
+ex)
+무채색
+유채색
+
+}
+
+# 없음, 있음, String(부가 설명)
+key option			// 주요옵션
+
+# 없음, 있음, String(부가 설명)
+Subject to recall			// 리콜대상
+
+# 있음, 없음
+accident history			// 사고 이력
+simple repair			// 단순 수리
+
+# String
+Price survey calculation amount and special items : "str"	// 가격조사 산정액 및 특기사항
+
+# ㅡㅡㅡㅡㅡㅡㅡ더 확인해야됨ㅡㅡㅡㅡㅡㅡㅡㅡ
+Exchange				// 교환
+sheet metal/welds			// 판금/용접
+Corrosion			// 부식
+blemish				// 흠집
+bumps and iron			// 요철
+Damage				// 손상
+#ㅡㅡㅡㅡㅡㅡㅡㅡㅡㅡㅡㅡㅡㅡㅡㅡㅡㅡㅡㅡㅡㅡ
+
+
+# String
+Exterior {				// 외판 
+
+ex)
+앞(전방)
+뒤(후방)
+1랭크
+없음
+2랭크
+없음
+
+}
+
+# String
+Exterior {				// 외판 
+
+ex)
+앞(전방)
+뒤(후방)
+1랭크
+없음
+2랭크
+없음
+
+}
+
+#양호, 불량
+Self-diagnosis{	 		// 자기진단
+the motive of the motor		// 원동기
+Transmission			// 변속기
+}
+
+
+# 양호, 불량
+Motor {				// 원동기 
+peration status(internal slipage)	// 작동상태(공회전)
+
+# 없음, 미세누유 누유
+Oil oil leakage{			// 오일누유		
+Cylinder cover (rocker arm cover)	// 실린더 커버 (로커암 커버)
+cylinder head/gasket		// 실린더 헤드/개스킷
+cylinder block/oil pan		// 실린더 블록/오일팬
+}				
+
+# 적정, 부족
+oil flow rate			// 오일 유량
+
+# 없음, 미세누수, 누수
+Water leak{			// 냉각수누수
+cylinder head/gasket		// 실린더 헤드/개스킷
+Water pump			// 워터펌프
+Radiator				// 라디에이터
+
+# 적정, 부족
+cooling water quantity		// 냉각수수량	
+}
+}
+
+
+Automatic transmission (A/T){	// 자동변속기(A/T)
+
+# 없음, 미세누유, 누유
+oil leakage			// 오일누유
+
+# 적정, 부족, 과다
+Oil flow and condition		// 오일유량 및 상태
+
+# 양호 불량
+internal slipage			// 작동상태(공회전)
+}
+
+
+#양호, 불량
+Power Transfer {			// 동력전달 
+clutch assembly			// 클러치 어셈블리
+constant velocity joint		// 등속 조인트
+propulsion shaft and bearing		// 추진축 및 베어링
+differential gear			// 디퍼렌셜 기어
+}
+
+Steer {				// 조향
+
+# 없음, 미세누유, 누유
+power steering actuated oil leakage	// 동력조향 작동 오일 누유
+
+# 양호, 불량
+Operation Status {			// 작동상태
+steering pump			// 스티어링 펌프
+Steering Gear (With MDPS)		// 스티어링 기어 (MDPS 포함)
+steering joint			// 스티어링 조인트
+power high pressure hose		// 파워 고압 호스
+tie-rod end and ball joint		// 타이로드엔드 및 볼 조인트
+}
+}
+
+# 없음, 미세누유, 누유
+Braking{				// 제동
+Brake master cylinder oil leakage	// 브레이크 마스터 실린더 오일 누유
+brake fluid leak			// 브레이크 오일 누유
+
+# 양호, 불량
+state of the power distribution system// 배력장치 상태
+}
+
+
+# 양호, 불량
+Electricity {			// 전기
+generator output			// 발전기 출력
+starting motor			// 시동 모터
+wiper motor function		// 와이퍼 모터 기능
+indoor blast motor			// 실내 송풍 모터
+radiator fan motor			// 라디에이터 팬 모터
+window motor			// 윈도우 모터
+}
+
+# 없음, 있음
+Fuel {				// 연료 
+Fuel spill (including LP gas)		// 연료누출(LP가스포함)
+}
+
+Specialties and Inspector's Comments {	// 특기사항 및 점검자의 의견
+Performance-String Checker: "String"		// 성능-상태 점검자 : "String"
+
+}
+
+}
+
+}
