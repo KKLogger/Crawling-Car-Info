@@ -26,12 +26,12 @@ def get_car_urls():
         response = requests.get(url)
         soup = bs(response.text, 'html.parser')
         print(page_num)
-        ########종료 조건 ###############
-        if page_num == 5:
-            break
-        # if soup.find('span', {'class': 'txt'}) is not None:
-        #     print('종료')
+        #######종료 조건 ###############
+        # if page_num == 5:
         #     break
+        if soup.find('span', {'class': 'txt'}) is not None:
+            print('종료')
+            break
 
         items = soup.find_all('a')
         for item in items:
@@ -65,23 +65,57 @@ def get_car_info(url, temp):
     }
     response = requests.get(url, headers=headers)
     soup = bs(response.text, 'html.parser')
-
-    car_b_n_t = soup.find('strong', {'class': 'car-buy-name'})
-    car_b_n = str(car_b_n_t).split('<br/>')[0]
-    car_b_n = car_b_n[car_b_n.index(')')+1:]
-    car_brand = car_b_n[:car_b_n.index(' ')]
-    car_name = car_b_n[car_b_n.index(' ')+1:]
-    car_trim = str(car_b_n_t).split('<br/>')[1]
-    car_trim = car_trim[:car_trim.index('<')].strip()
+    Cookie = response.cookies.get('cha-cid')
+    Cookie = "cha-cid=" + Cookie + ";"
+    carSeq = url[url.index('?carSeq=')+len('?carSeq='):]
+    json_url = 'https://www.kbchachacha.com/public/car/common/recent/car/list.json'
+    json_headers = {
+        'Accept': '*/*',
+        'Accept-Encoding': "gzip, deflate, br",
+        'Accept-Language': 'ko-KR,ko;q=0.9,en-US;q=0.8,en;q=0.7',
+        'Cache-Control': 'no-cache',
+        'Connection': "keep-alive",
+        "Content-Length": "723",
+        'Content-Type': 'application/x-www-form-urlencoded; charset=UTF-8',
+        'Host': 'www.kbchachacha.com',
+        'Origin': 'https://www.kbchachacha.com',
+        'Pragma': 'no-cache',
+        'Referer': url,
+        'Cookie': Cookie,
+        'Sec-Fetch-Dest': 'empty',
+        'Sec-Fetch-Mode': 'cors',
+        'Sec-Fetch-Site': 'same-origin',
+        'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/86.0.4240.111 Safari/537.36',
+        'X-AJAX': 'true',
+    }
+    json_data = {
+        'gotoPage': '1',
+        'pageSize': '1',
+        'carSeqVal': carSeq
+    }
+    res_json = requests.post(json_url, headers=json_headers, data=json_data)
+    car_dict = res_json.json()
+    car_dict = car_dict['list'][0]
+    # 차 정보
     car_price = soup.find(
         'div', {'class': 'car-buy-price'}).find('div').find('strong').text
     car_info1 = soup.find('dl', {'class': 'claerFix'}).find_all('dd')
     car_info1 = [x.text.strip().replace(' ', '') for x in car_info1]
-
     car_info2 = soup.find('div', {'class': 'detail-info02'}).find_all('dd')
     car_info2 = [x.text.strip().replace(' ', '') for x in car_info2]
-
     car_info = car_info1 + car_info2
+
+    car_year = car_info[1]
+    car_year = car_year[car_year.index('(')+1:car_year.index(')')]
+
+    if soup.find('div', {'class': 'suc-price'}) is None:
+        if soup.find_all('div', {'class': 'car-buy-debt-m'})[1].find('div').text == '리스 이용 금융상담문의':
+            car_saletype = 'NORMAL_SALE'
+        else:
+            car_saletype = 'LEASE_SALE'
+    else:
+        car_saletype = 'LEASE_SALE'
+    # 딜러 정보
     dealer_info = soup.find('div', {'class': 'dealer-cnt'})
     dealer_company = dealer_info.find('span', {'class', 'name'}).text.strip()
     dealer_location = dealer_info.find(
@@ -89,13 +123,29 @@ def get_car_info(url, temp):
     dealer_phone = dealer_info.find(
         'div', {'class': 'dealer-tel-num'}).text.strip()
 
-    temp['Manufacturer'] = car_brand
-    temp['Model'] = car_name
-    temp['Badge'] = car_trim
+    dealerNo = soup.find('div', {'class': 'car-seller-info'}).find('img')
+    find_txt = 'userImageError(this,'
+    find_txt_len = len(find_txt)
+    full_txt = dealerNo.get('onerror')
+    if full_txt is None:
+        dealerNo = 'null'
+    else:
+        dealerNo = full_txt[full_txt.index(
+            find_txt)+find_txt_len: full_txt.index(')')].split(',')
+        dealerNo = dealerNo[2].replace("'", '')
+    # 값 입력
+    temp['Manufacturer'] = car_dict['makerName']
+    temp['Model'] = car_dict['carName']
+    temp['Badge'] = car_dict['modelName']
+    temp['Grade'] = car_dict['gradeName']
+    if temp['Grade'] == '':
+        temp['Grade'] = 'null'
+
     temp['Price'] = car_price
     temp['CarNumber'] = car_info[0]
 
-    temp['Year'] = car_info[1].split('(')[0]
+    temp['Year'] = car_year
+    # temp['Year'] = "20" + car_info[1].split('(')[0].split(' ')[0]
     temp['Mileage'] = car_info[2]
     temp['FuelType'] = car_info[3]
     temp['Transmission'] = car_info[4]
@@ -117,13 +167,15 @@ def get_car_info(url, temp):
     temp['TrustCompensate'] = 'null'
     temp['TrustInspection'] = 'null'
     temp['ModifiedDate'] = 'null'
-    temp['CarSaleType'] = 'NORMAL_SALE'
+
+    temp['CarSaleType'] = car_saletype
     # temp['전속이력'] = car_info[13]
     # temp['침수이력'] = car_info[14]
     # temp['용도이력'] = car_info[15]
     # temp['소유자변경'] = car_info[16]
     temp['url'] = url
-    temp['SellerId'] = dealer_company
+    temp['SellerId'] = dealerNo
+
     temp['Location'] = dealer_location
     # FuelEfficiency
     # NoTax
@@ -300,9 +352,18 @@ def get_history(url, temp):
         date = str(num) + ") : " + y+m+d
         price = history.find('span', {'class': 'cor-blue'}).text.strip()
         HistDamage[date] = price
+    a = hide_list[0].text.strip()
+    b = hide_list[1].text.strip()
+    c = hide_list[2].text.strip()
+    if a == '없음':
+        a = '0'
+    if b == '없음':
+        b = '0'
+    if c == '없음':
+        c = '0'
 
     temp['AccidentHistory'] = "전손: {a}, 도난 : {b}, 침수(전손/분손) : {c}".format(
-        a=hide_list[0].text.strip(), b=hide_list[1].text.strip(), c=hide_list[2].text.strip())
+        a=a, b=b, c=c)
 
     temp['UseHistory'] = hide_list[3].text.strip()
     temp['MyDamage'] = hide_list[4].text.strip()
@@ -329,28 +390,31 @@ def start():
     result = list()
     car_urls = get_car_urls()
 
-    # df = pd.DataFrame()
-    # df['url'] = car_urls
-    # print(df.head)
-    # df.to_csv('urls.csv', sep=',', encoding='euc-kr')
-    # print(len(car_urls))
     num = 0
     for url in car_urls:
         print(url)
         num += 1
         print(len(car_urls), "중에", num)
         temp = dict()
-
-        temp = get_car_info(
-            url, temp)
-
-        temp.update(get_history(
-            url, temp))
-
-        temp['Options'] = get_options(
-            url)
-
-        temp = get_checkdata(url, temp)
+        try:
+            temp = get_car_info(
+                url, temp)
+        except:
+            pass
+        try:
+            temp.update(get_history(
+                url, temp))
+        except:
+            pass
+        try:
+            temp['Options'] = get_options(
+                url)
+        except:
+            pass
+        try:
+            temp = get_checkdata(url, temp)
+        except:
+            pass
 
         result.append(temp)
 
@@ -509,49 +573,60 @@ def crawl_iframe(url, temp):
     #     'tr')[6].find('div', {'class': 'option-ch'}).get('value')
     # result['기본품목 보유상태'] = table[5].find('tbody').find_all(
     #     'tr')[7].find('div', {'class': 'option-ch'}).get('value')
-    check_outer['CrossMember'] = 'null'
-    check_outer['DashPanel'] = 'null'
-    check_outer['FloorPanel'] = 'null'
-    check_outer['FrontDoorLeft'] = 'null'
-    check_outer['FrontDoorRight'] = 'null'
-    check_outer['FrontFenderLeft'] = 'null'
-    check_outer['FrontFenderRight'] = 'null'
-    check_outer['FrontPanel'] = 'null'
-    check_outer['FrontSideMemberLeft'] = 'null'
-    check_outer['FrontSideMemberRight'] = 'null'
-    check_outer['FrontWheelHouseLeft'] = 'null'
-    check_outer['FrontWheelHouseRight'] = 'null'
-    check_outer['Hood'] = 'null'
-    check_outer['InsidePanelLeft'] = 'null'
-    check_outer['InsidePanelRight'] = 'null'
-    check_outer['PackageTray'] = 'null'
-    check_outer['PillarPanelFrontLeft'] = 'null'
-    check_outer['PillarPanelFrontRight'] = "null"
-    check_outer['PillarPanelMiddleLeft'] = "null"
-    check_outer['PillarPanelMiddleRight'] = "null"
-    check_outer['PillarPanelRearLeft'] = "null"
-    check_outer['PillarPanelRearRight'] = "null"
-    check_outer['QuarterPanelLeft'] = "null"
-    check_outer['QuarterPanelRight'] = "null"
-    check_outer['RadiatorSupport'] = "null"
-    check_outer['RearDoorLeft'] = "null"
-    check_outer['RearDoorRight'] = "null"
-    check_outer['RearPanel'] = "null"
-    check_outer['RearSideMemberLeft'] = "null"
-    check_outer['RearSideMemberRight'] = "null"
-    check_outer['RearWheelHouseLeft'] = "null"
-    check_outer['RearWheelHouseRight'] = "null"
-    check_outer['RoofPanel'] = "null"
-    check_outer['SideSillPanelLeft'] = "null"
-    check_outer['SideSillPanelRight'] = "null"
-    check_outer['TrunkFloor'] = "null"
-    check_outer['TrunkLead'] = "null"
+    check_outer['CrossMember'] = 'none'
+    check_outer['DashPanel'] = 'none'
+    check_outer['FloorPanel'] = 'none'
+    check_outer['FrontDoorLeft'] = 'none'
+    check_outer['FrontDoorRight'] = 'none'
+    check_outer['FrontFenderLeft'] = 'none'
+    check_outer['FrontFenderRight'] = 'none'
+    check_outer['FrontPanel'] = 'none'
+    check_outer['FrontSideMemberLeft'] = 'none'
+    check_outer['FrontSideMemberRight'] = 'none'
+    check_outer['FrontWheelHouseLeft'] = 'none'
+    check_outer['FrontWheelHouseRight'] = 'none'
+    check_outer['Hood'] = 'none'
+    check_outer['InsidePanelLeft'] = 'none'
+    check_outer['InsidePanelRight'] = 'none'
+    check_outer['PackageTray'] = 'none'
+    check_outer['PillarPanelFrontLeft'] = 'none'
+    check_outer['PillarPanelFrontRight'] = "none"
+    check_outer['PillarPanelMiddleLeft'] = "none"
+    check_outer['PillarPanelMiddleRight'] = "none"
+    check_outer['PillarPanelRearLeft'] = "none"
+    check_outer['PillarPanelRearRight'] = "none"
+    check_outer['QuarterPanelLeft'] = "none"
+    check_outer['QuarterPanelRight'] = "none"
+    check_outer['RadiatorSupport'] = "none"
+    check_outer['RearDoorLeft'] = "none"
+    check_outer['RearDoorRight'] = "none"
+    check_outer['RearPanel'] = "none"
+    check_outer['RearSideMemberLeft'] = "none"
+    check_outer['RearSideMemberRight'] = "none"
+    check_outer['RearWheelHouseLeft'] = "none"
+    check_outer['RearWheelHouseRight'] = "none"
+    check_outer['RoofPanel'] = "none"
+    check_outer['SideSillPanelLeft'] = "none"
+    check_outer['SideSillPanelRight'] = "none"
+    check_outer['TrunkFloor'] = "none"
+    check_outer['TrunkLead'] = "none"
+    repair_items = ['Hood', 'FrontFenderLeft', 'FrontFenderRight', 'FrontDoorLeft', 'FrontDoorRight', 'RearDoorLeft', 'RearDoorRight', 'TrunkLead', 'RadiatorSupport', 'QuarterPanelLeft', 'QuarterPanelRight', 'RoofPanel', 'SideSillPanelLeft', 'SideSillPanelRight', 'FrontPanel', 'CrossMember', 'InsidePanelLeft', 'InsidePanelRight', 'RearSideMemberLeft',
+                    'RearSideMemberRight', 'FrontSideMemberLeft', 'FrontSideMemberRight', 'FrontWheelHouseLeft', 'FrontWheelHouseRight', 'RearWheelHouseLeft', 'RearWheelHouseRight',
+                    'PillarPanelFrontLeft', 'PillarPanelFrontRight', 'PillarPanelMiddleLeft', 'PillarPanelMiddleRight', 'PillarPanelRearLeft', 'PillarPanelRearRight', 'DashPanel',
+                    'noitem1', 'FloorPanel', 'noitem2', 'TrunkFloor', 'RearPanel', 'PackageTray']  # 1~39
+
+    items_index = soup.find('input', {'id': 'carCheck'}).get('value')
+
+    for i, item in enumerate(items_index):
+        if item != ' ':
+            check_outer[repair_items[i]] = item
     for key, value in check_inner.items():
         if value == '':
             check_inner[key] = 'null'
     for key, value in check_outer.items():
         if value == '':
             check_outer[key] = 'null'
+
     temp['IssueDt'] = soup.find('div', {'class': 'date'}).text
     temp['CHECK_INNER'] = check_inner
     temp['CHECK_OUTER'] = check_outer
@@ -613,4 +688,36 @@ def get_checkdata(url, temp):
     return temp
 
 
-start()
+def test(url):
+    result = list()
+    car_urls = [url]
+
+    num = 0
+    for url in car_urls:
+        print(url)
+        num += 1
+        print(len(car_urls), "중에", num)
+        temp = dict()
+
+        temp = get_car_info(
+            url, temp)
+
+        temp.update(get_history(
+            url, temp))
+
+        temp['Options'] = get_options(
+            url)
+
+        temp = get_checkdata(url, temp)
+
+        result.append(temp)
+
+    with open('./result.json', 'w', encoding='utf-8-sig') as outfile:
+        json.dump(result, outfile, indent=4,
+                  ensure_ascii=False, sort_keys=True)
+
+    print("완-----료")
+
+
+test('https://www.kbchachacha.com/public/car/detail.kbc?carSeq=20831927')
+# start()
