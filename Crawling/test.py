@@ -1,10 +1,7 @@
 
 import requests
-import selenium
-from selenium import webdriver
 from bs4 import BeautifulSoup as bs
 import pandas as pd
-import time
 import json
 from urllib.request import urlopen
 
@@ -24,14 +21,14 @@ def get_car_urls():
         url = get_page_url(page_num)
         print(url)
         response = requests.get(url)
-        soup = bs(response.text, 'html.parser')
+        soup = bs(response.text, "html.parser")
         print(page_num)
         #######종료 조건 ###############
-        # if page_num == 5:
-        #     break
-        if soup.find('span', {'class': 'txt'}) is not None:
-            print('종료')
+        if page_num == 5:
             break
+        # if soup.find('span', {'class': 'txt'}) is not None:
+        #     print('종료')
+        #     break
 
         items = soup.find_all('a')
         for item in items:
@@ -213,7 +210,7 @@ def get_options(url):
     }
     res = requests.post(
         'https://www.kbchachacha.com/public/layer/car/option/list.kbc', headers=headers, data=data)
-    soup = bs(res.text, 'lxml')
+    soup = bs(res.text, 'html.parser')
     option_codes = soup.find('input', {'id': 'carOption'})[
         'value'].split(',')
     res = requests.post(
@@ -283,7 +280,7 @@ def df_to_dict(df):
 def get_history(url, temp):
 
     response = requests.get(url)
-    soup = bs(response.text, 'lxml')
+    soup = bs(response.text, 'html.parser')
     soup = str(soup)
     str_len = len('carHistorySeq = "')
     carHistorySeq = soup[soup.index(
@@ -312,7 +309,7 @@ def get_history(url, temp):
     }
     response = requests.post(
         'https://www.kbchachacha.com/public/layer/car/history/info.kbc', headers=headers, data=datas)
-    soup = bs(response.text, 'lxml')
+    soup = bs(response.text, 'html.parser')
     hide_list = soup.find('ul', {'class': 'hide-list'}
                           ).find_all('span', {'class': 'txt'})
     registeredDate = soup.find('div', {'class': 'b-right'}).find_all('tr')
@@ -434,7 +431,7 @@ def crawl_iframe(url, temp):
     }
     res = requests.post(
         'https://www.kbchachacha.com/public/layer/car/check/info.kbc', data=data)
-    soup = bs(res.text, 'lxml')
+    soup = bs(res.text, 'html.parser')
 
     table = soup.find_all('table')
     temp['RegistrationID'] = table[0].find_all('tr')[5].find('td').text
@@ -651,7 +648,7 @@ def get_checkdata(url, temp):
     }
     res = requests.get(
         url, headers=headers)
-    soup = bs(res.text, 'lxml')
+    soup = bs(res.text, 'html.parser')
     chk_tag_url = soup.find('li', {'class': 'used01'}).find('a')[
         'data-link-url']
     if 'http' in chk_tag_url:  # 다른 페이지로 이동
@@ -667,7 +664,7 @@ def get_checkdata(url, temp):
         res = requests.post(
             'https://www.kbchachacha.com/public/layer/car/check/info.kbc', data=data)
 
-        soup = bs(res.text, 'lxml')
+        soup = bs(res.text, 'html.parser')
 
         img_check = soup.find('div', {'class': 'ch-car-txt'})
         if img_check == None:
