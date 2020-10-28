@@ -4,3 +4,7 @@ Scripts
 image
 *.json
 result.json
+pyvenv.cfg
+Crawling/pyvenv.cfg
+Crawling/pyvenv.cfg
+*.cfg

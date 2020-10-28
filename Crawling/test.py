@@ -8,7 +8,7 @@ from urllib.request import urlopen
 
 def get_page_url(page_num):
     url = 'https://www.kbchachacha.com/public/search/list.empty?page=' + \
-        str(page_num) + '&sort=-orderDate&makerCode=101&_pageSize=3&pageSize=4'
+        str(page_num) + '&sort=-orderDate&_pageSize=3&pageSize=4'
     return url
 
 
@@ -24,11 +24,11 @@ def get_car_urls():
         soup = bs(response.text, "html.parser")
         print(page_num)
         #######종료 조건 ###############
-        if page_num == 5:
-            break
-        # if soup.find('span', {'class': 'txt'}) is not None:
-        #     print('종료')
+        # if page_num == 3:
         #     break
+        if soup.find('span', {'class': 'txt'}) is not None:
+            print('종료')
+            break
 
         items = soup.find_all('a')
         for item in items:
@@ -108,10 +108,34 @@ def get_car_info(url, temp):
     if soup.find('div', {'class': 'suc-price'}) is None:
         if soup.find_all('div', {'class': 'car-buy-debt-m'})[1].find('div').text == '리스 이용 금융상담문의':
             car_saletype = 'NORMAL_SALE'
+            SeparationLease = "False"
         else:
             car_saletype = 'LEASE_SALE'
+            SeparationLease = "True"
     else:
         car_saletype = 'LEASE_SALE'
+        SeparationLease = "True"
+    if soup.find('div', {'class': 'dealer-info-area'}).find('span', {'place-add'}).text == '개인판매자':
+        SeparationDealer = 'False'
+        SeparationIndividual = 'True'
+    else:
+        SeparationDealer = 'True'
+        SeparationIndividual = 'False'
+    service_list = [x.text for x in soup.find_all('div', {'class': 'line-ad'})]
+    for service in service_list:
+        if 'KB캐피탈 인증 중고차' in service:
+            SeparationBrandCertified = 'True'
+        else:
+            SeparationBrandCertified = 'False'
+        if '헛걸음보상서비스' in service:
+            TrustCompensate = 'True'
+        else:
+            TrustCompensate = 'False'
+
+    img_src = soup.find('ul', {'class': 'bxslider'}).find('img').get('src')
+    t_date = requests.get(img_src).headers['Last-Modified'].split(' ')
+
+    ModifiedDate = get_dateform(t_date)
     # 딜러 정보
     dealer_info = soup.find('div', {'class': 'dealer-cnt'})
     dealer_company = dealer_info.find('span', {'class', 'name'}).text.strip()
@@ -154,16 +178,16 @@ def get_car_info(url, temp):
     temp['SeizingCount'] = car_info[10]
     temp['PledgeCount'] = car_info[11]
     temp['Id'] = car_info[12]
-    temp['SeparationIndividual'] = 'null'
-    temp['SeparationDealer'] = 'null'
-    temp['SeparationBrandCertified'] = 'null'
-    temp['SeparationLease'] = 'null'
+    temp['SeparationIndividual'] = SeparationIndividual
+    temp['SeparationDealer'] = SeparationDealer
+    temp['SeparationBrandCertified'] = SeparationBrandCertified
+    temp['SeparationLease'] = SeparationLease
     temp['TrustEncarHomeservice'] = 'null'
     temp['TrustEncarWarranty'] = 'null'
     temp['TrustEncarExtendWarranty'] = 'null'
-    temp['TrustCompensate'] = 'null'
+    temp['TrustCompensate'] = TrustCompensate
     temp['TrustInspection'] = 'null'
-    temp['ModifiedDate'] = 'null'
+    temp['ModifiedDate'] = ModifiedDate
 
     temp['CarSaleType'] = car_saletype
     # temp['전속이력'] = car_info[13]
@@ -314,6 +338,10 @@ def get_history(url, temp):
                           ).find_all('span', {'class': 'txt'})
     registeredDate = soup.find('div', {'class': 'b-right'}).find_all('tr')
     registeredDate = registeredDate[3].find('td').text.strip()
+    y = registeredDate.split('-')[0] + "년"
+    m = registeredDate.split('-')[1] + "월"
+    d = registeredDate.split('-')[2] + "일"
+    registeredDate = y+m+d
     noRegisterPeriod = soup.find('div', {'class', 'box-line'})
     if noRegisterPeriod.find('div', {'class', 'date'}) is None:
         noRegisterPeriod = "None"
@@ -435,13 +463,18 @@ def crawl_iframe(url, temp):
 
     table = soup.find_all('table')
     temp['RegistrationID'] = table[0].find_all('tr')[5].find('td').text
-
+    if temp['RegistrationID'] == '':
+        temp['RegistrationID'] = 'null'
     # temp['변속기종류'] = table[0].find_all(
     #     'tr')[6].find('div').get('value')
     # temp['사용연료'] = table[0].find_all('tr')[7].find('div').get('value')
     temp['MotorType'] = table[0].find_all('tr')[8].find('td').text
+    if temp['MotorType'] == '':
+        temp['MotorType'] = 'null'
     temp['WarrantyType'] = table[0].find_all(
         'tr')[9].find('div').get('value')
+    if temp['WarrantyType'] == '':
+        temp['WarrantyType'] = 'null'
     # result['가격잔정 기준가격'] = table[0].find_all('tr')[10].find('td').text.strip()
     check_inner = dict()
     check_outer = dict()
@@ -570,43 +603,43 @@ def crawl_iframe(url, temp):
     #     'tr')[6].find('div', {'class': 'option-ch'}).get('value')
     # result['기본품목 보유상태'] = table[5].find('tbody').find_all(
     #     'tr')[7].find('div', {'class': 'option-ch'}).get('value')
-    check_outer['CrossMember'] = 'none'
-    check_outer['DashPanel'] = 'none'
-    check_outer['FloorPanel'] = 'none'
-    check_outer['FrontDoorLeft'] = 'none'
-    check_outer['FrontDoorRight'] = 'none'
-    check_outer['FrontFenderLeft'] = 'none'
-    check_outer['FrontFenderRight'] = 'none'
-    check_outer['FrontPanel'] = 'none'
-    check_outer['FrontSideMemberLeft'] = 'none'
-    check_outer['FrontSideMemberRight'] = 'none'
-    check_outer['FrontWheelHouseLeft'] = 'none'
-    check_outer['FrontWheelHouseRight'] = 'none'
-    check_outer['Hood'] = 'none'
-    check_outer['InsidePanelLeft'] = 'none'
-    check_outer['InsidePanelRight'] = 'none'
-    check_outer['PackageTray'] = 'none'
-    check_outer['PillarPanelFrontLeft'] = 'none'
-    check_outer['PillarPanelFrontRight'] = "none"
-    check_outer['PillarPanelMiddleLeft'] = "none"
-    check_outer['PillarPanelMiddleRight'] = "none"
-    check_outer['PillarPanelRearLeft'] = "none"
-    check_outer['PillarPanelRearRight'] = "none"
-    check_outer['QuarterPanelLeft'] = "none"
-    check_outer['QuarterPanelRight'] = "none"
-    check_outer['RadiatorSupport'] = "none"
-    check_outer['RearDoorLeft'] = "none"
-    check_outer['RearDoorRight'] = "none"
-    check_outer['RearPanel'] = "none"
-    check_outer['RearSideMemberLeft'] = "none"
-    check_outer['RearSideMemberRight'] = "none"
-    check_outer['RearWheelHouseLeft'] = "none"
-    check_outer['RearWheelHouseRight'] = "none"
-    check_outer['RoofPanel'] = "none"
-    check_outer['SideSillPanelLeft'] = "none"
-    check_outer['SideSillPanelRight'] = "none"
-    check_outer['TrunkFloor'] = "none"
-    check_outer['TrunkLead'] = "none"
+    check_outer['CrossMember'] = 'null'
+    check_outer['DashPanel'] = 'null'
+    check_outer['FloorPanel'] = 'null'
+    check_outer['FrontDoorLeft'] = 'null'
+    check_outer['FrontDoorRight'] = 'null'
+    check_outer['FrontFenderLeft'] = 'null'
+    check_outer['FrontFenderRight'] = 'null'
+    check_outer['FrontPanel'] = 'null'
+    check_outer['FrontSideMemberLeft'] = 'null'
+    check_outer['FrontSideMemberRight'] = 'null'
+    check_outer['FrontWheelHouseLeft'] = 'null'
+    check_outer['FrontWheelHouseRight'] = 'null'
+    check_outer['Hood'] = 'null'
+    check_outer['InsidePanelLeft'] = 'null'
+    check_outer['InsidePanelRight'] = 'null'
+    check_outer['PackageTray'] = 'null'
+    check_outer['PillarPanelFrontLeft'] = 'null'
+    check_outer['PillarPanelFrontRight'] = "null"
+    check_outer['PillarPanelMiddleLeft'] = "null"
+    check_outer['PillarPanelMiddleRight'] = "null"
+    check_outer['PillarPanelRearLeft'] = "null"
+    check_outer['PillarPanelRearRight'] = "null"
+    check_outer['QuarterPanelLeft'] = "null"
+    check_outer['QuarterPanelRight'] = "null"
+    check_outer['RadiatorSupport'] = "null"
+    check_outer['RearDoorLeft'] = "null"
+    check_outer['RearDoorRight'] = "null"
+    check_outer['RearPanel'] = "null"
+    check_outer['RearSideMemberLeft'] = "null"
+    check_outer['RearSideMemberRight'] = "null"
+    check_outer['RearWheelHouseLeft'] = "null"
+    check_outer['RearWheelHouseRight'] = "null"
+    check_outer['RoofPanel'] = "null"
+    check_outer['SideSillPanelLeft'] = "null"
+    check_outer['SideSillPanelRight'] = "null"
+    check_outer['TrunkFloor'] = "null"
+    check_outer['TrunkLead'] = "null"
     repair_items = ['Hood', 'FrontFenderLeft', 'FrontFenderRight', 'FrontDoorLeft', 'FrontDoorRight', 'RearDoorLeft', 'RearDoorRight', 'TrunkLead', 'RadiatorSupport', 'QuarterPanelLeft', 'QuarterPanelRight', 'RoofPanel', 'SideSillPanelLeft', 'SideSillPanelRight', 'FrontPanel', 'CrossMember', 'InsidePanelLeft', 'InsidePanelRight', 'RearSideMemberLeft',
                     'RearSideMemberRight', 'FrontSideMemberLeft', 'FrontSideMemberRight', 'FrontWheelHouseLeft', 'FrontWheelHouseRight', 'RearWheelHouseLeft', 'RearWheelHouseRight',
                     'PillarPanelFrontLeft', 'PillarPanelFrontRight', 'PillarPanelMiddleLeft', 'PillarPanelMiddleRight', 'PillarPanelRearLeft', 'PillarPanelRearRight', 'DashPanel',
@@ -615,8 +648,14 @@ def crawl_iframe(url, temp):
     items_index = soup.find('input', {'id': 'carCheck'}).get('value')
 
     for i, item in enumerate(items_index):
-        if item != ' ':
+        if repair_items[i] == 'noitem1' or repair_items[i] == 'noitem2':
+            continue
+        if item == 'X' or item == 'C' or item == 'W' or item == 'A' or item == 'U' or item == 'T':
             check_outer[repair_items[i]] = item
+        elif item == ' ' and check_inner['MotorOperationStatus'] != 'null' and check_inner['SelfCheckMotor'] != 'null':
+            check_outer[repair_items[i]] = 'none'
+        else:
+            pass
     for key, value in check_inner.items():
         if value == '':
             check_inner[key] = 'null'
@@ -624,7 +663,9 @@ def crawl_iframe(url, temp):
         if value == '':
             check_outer[key] = 'null'
 
-    temp['IssueDt'] = soup.find('div', {'class': 'date'}).text
+    temp['IssueDt'] = soup.find('div', {'class': 'date'}).text.replace(' ', '')
+    if temp['IssueDt'] == '':
+        temp['IssueDt'] = 'null'
     temp['CHECK_INNER'] = check_inner
     temp['CHECK_OUTER'] = check_outer
     return temp
@@ -716,5 +757,20 @@ def test(url):
     print("완-----료")
 
 
-test('https://www.kbchachacha.com/public/car/detail.kbc?carSeq=20831927')
-# start()
+def get_dateform(date):
+    y = date[3]
+    m = date[2]
+    d = date[1]
+    time = date[4]
+    months = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun',
+              'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec']
+    for i, month in enumerate(months):
+        if month == m:
+            m = i+1
+            break
+    result = str(y) + "년" + str(m) + "월" + str(d) + "일 " + str(time)
+    return result
+
+
+    # test('https://www.kbchachacha.com/public/car/detail.kbc?carSeq=20831927')
+start()
