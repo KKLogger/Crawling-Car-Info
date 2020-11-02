@@ -131,6 +131,11 @@ def get_car_info(url, temp):
             TrustCompensate = 'True'
         else:
             TrustCompensate = 'False'
+    extend_service = soup.find("a", {'class': 'service01'}).get('class')
+    if 'overlay' in extend_service:
+        extend_service = 'False'
+    else:
+        extend_service = 'True'
 
     img_src = soup.find('ul', {'class': 'bxslider'}).find('img').get('src')
     t_date = requests.get(img_src).headers['Last-Modified'].split(' ')
@@ -184,7 +189,7 @@ def get_car_info(url, temp):
     temp['SeparationLease'] = SeparationLease
     temp['TrustEncarHomeservice'] = 'null'
     temp['TrustEncarWarranty'] = 'null'
-    temp['TrustEncarExtendWarranty'] = 'null'
+    temp['TrustEncarExtendWarranty'] = extend_service
     temp['TrustCompensate'] = TrustCompensate
     temp['TrustInspection'] = 'null'
     temp['ModifiedDate'] = ModifiedDate
@@ -192,7 +197,7 @@ def get_car_info(url, temp):
     temp['CarSaleType'] = car_saletype
     # temp['전속이력'] = car_info[13]
     # temp['침수이력'] = car_info[14]
-    # temp['용도이력'] = car_info[15]
+    # temp['useHis'] = car_info[15]
     # temp['소유자변경'] = car_info[16]
     temp['url'] = url
     temp['SellerId'] = dealerNo
@@ -424,21 +429,29 @@ def start():
         try:
             temp = get_car_info(
                 url, temp)
+            print('done car_info')
         except:
+            print('error in car_info')
             pass
         try:
             temp.update(get_history(
                 url, temp))
+            print('done car_history')
         except:
+            print('error in history')
             pass
         try:
             temp['Options'] = get_options(
                 url)
+            print('done options')
         except:
+            print('error in options')
             pass
         try:
             temp = get_checkdata(url, temp)
+            print('done checkdata')
         except:
+            print('error in checkdata')
             pass
 
         result.append(temp)
