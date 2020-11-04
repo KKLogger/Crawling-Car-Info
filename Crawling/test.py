@@ -6,39 +6,43 @@ import json
 from urllib.request import urlopen
 
 
-def get_page_url(page_num):
+def get_page_url(page_num, user_code):
     url = 'https://www.kbchachacha.com/public/search/list.empty?page=' + \
-        str(page_num) + '&sort=-orderDate&_pageSize=3&pageSize=4'
+        str(page_num) + '&sort=-orderDate&useCode=' + \
+        str(user_code) + '&_pageSize=3&pageSize=4'
     return url
 
 
 def get_car_urls():
 
     car_url_list = list()
-    page_num = 0
-    while(True):
-        page_num += 1
-        url = get_page_url(page_num)
-        print(url)
-        response = requests.get(url)
-        soup = bs(response.text, "html.parser")
-        print(page_num)
-        #######종료 조건 ###############
-        # if page_num == 3:
-        #     break
-        if soup.find('span', {'class': 'txt'}) is not None:
-            print('종료')
-            break
+    user_codes = ['002001', '002002', '002003', '002004', '002005', '002006',
+                  '002007', '002008', '002009', '002010', '002011', '002012', '002013']
+    for user_code in user_codes:
+        page_num = 0
+        while(True):
+            page_num += 1
+            url = get_page_url(page_num, user_code)
+            print(url)
+            response = requests.get(url)
+            soup = bs(response.text, "html.parser")
+            print(page_num)
+            #######종료 조건 ###############
+            # if page_num == 3:
+            #     break
+            if soup.find('span', {'class': 'txt'}) is not None:
+                print('종료')
+                break
 
-        items = soup.find_all('a')
-        for item in items:
-            if 'detail.kbc?carSeq' in item['href']:
-                item_href = item['href']
-                if 'https://' in item_href:
-                    car_url_list.append(item_href)
-                else:
-                    car_url_list.append(
-                        'https://www.kbchachacha.com/' + item_href)
+            items = soup.find_all('a')
+            for item in items:
+                if 'detail.kbc?carSeq' in item['href']:
+                    item_href = item['href']
+                    if 'https://' in item_href:
+                        car_url_list.append(item_href)
+                    else:
+                        car_url_list.append(
+                            'https://www.kbchachacha.com' + item_href)
 
     car_url_list = list(set(car_url_list))
     return car_url_list
@@ -90,9 +94,20 @@ def get_car_info(url, temp):
         'pageSize': '1',
         'carSeqVal': carSeq
     }
-    res_json = requests.post(json_url, headers=json_headers, data=json_data)
-    car_dict = res_json.json()
-    car_dict = car_dict['list'][0]
+    try:
+        res_json = requests.post(
+            json_url, headers=json_headers, data=json_data)
+        car_dict = res_json.json()
+        car_dict = car_dict['list'][0]
+        temp['Manufacturer'] = car_dict['makerName']
+        temp['Model'] = car_dict['carName']
+        temp['Badge'] = car_dict['modelName']
+        temp['Grade'] = car_dict['gradeName']
+    except:
+        temp['Manufacturer'] = 'null'
+        temp['Model'] = 'null'
+        temp['Badge'] = 'null'
+        temp['Grade'] = 'null'
     # 차 정보
     car_price = soup.find(
         'div', {'class': 'car-buy-price'}).find('div').find('strong').text
@@ -131,16 +146,19 @@ def get_car_info(url, temp):
             TrustCompensate = 'True'
         else:
             TrustCompensate = 'False'
-    extend_service = soup.find("a", {'class': 'service01'}).get('class')
+    extend_service = soup.find(
+        "div", {'class': 'service-list'}).find('a').get('class')
     if 'overlay' in extend_service:
         extend_service = 'False'
     else:
         extend_service = 'True'
 
     img_src = soup.find('ul', {'class': 'bxslider'}).find('img').get('src')
-    t_date = requests.get(img_src).headers['Last-Modified'].split(' ')
-
-    ModifiedDate = get_dateform(t_date)
+    try:
+        t_date = requests.get(img_src).headers['Last-Modified'].split(' ')
+        ModifiedDate = get_dateform(t_date)
+    except:
+        ModifiedDate = 'null'
     # 딜러 정보
     dealer_info = soup.find('div', {'class': 'dealer-cnt'})
     dealer_company = dealer_info.find('span', {'class', 'name'}).text.strip()
@@ -160,36 +178,43 @@ def get_car_info(url, temp):
             find_txt)+find_txt_len: full_txt.index(')')].split(',')
         dealerNo = dealerNo[2].replace("'", '')
     # 값 입력
-    temp['Manufacturer'] = car_dict['makerName']
-    temp['Model'] = car_dict['carName']
-    temp['Badge'] = car_dict['modelName']
-    temp['Grade'] = car_dict['gradeName']
+
     if temp['Grade'] == '':
         temp['Grade'] = 'null'
 
-    temp['Price'] = car_price
+    temp['Price'] = car_price.replace(',', '')
     temp['CarNumber'] = car_info[0]
 
     temp['Year'] = car_year
     # temp['Year'] = "20" + car_info[1].split('(')[0].split(' ')[0]
-    temp['Mileage'] = car_info[2]
+    temp['Mileage'] = car_info[2].replace(',', '')
     temp['FuelType'] = car_info[3]
     temp['Transmission'] = car_info[4]
     # temp['FuelEfficiency'] = car_info[5]
     temp['Category'] = car_info[6]
-    temp['Displacement'] = car_info[7]
+    temp['Displacement'] = car_info[7].replace(',', '')
     temp['Color'] = car_info[8]
     # temp['NoTax'] = car_info[9]
-    temp['SeizingCount'] = car_info[10]
-    temp['PledgeCount'] = car_info[11]
+    if car_info[10] == "없음":
+        temp['SeizingCount'] = "0건"
+    else:
+        temp['SeizingCount'] = car_info[10]
+    if car_info[11] == "없음":
+        temp['PledgeCount'] = "0건"
+    else:
+        temp['PledgeCount'] = car_info[11]
+
     temp['Id'] = car_info[12]
     temp['SeparationIndividual'] = SeparationIndividual
     temp['SeparationDealer'] = SeparationDealer
     temp['SeparationBrandCertified'] = SeparationBrandCertified
     temp['SeparationLease'] = SeparationLease
     temp['TrustEncarHomeservice'] = 'null'
+    # temp['TrustKBHomeservice'] = HomeService
     temp['TrustEncarWarranty'] = 'null'
-    temp['TrustEncarExtendWarranty'] = extend_service
+    # temp['TrustKBWarranty'] = Warranty
+    temp['TrustEncarExtendWarranty'] = 'null'
+    temp['TrustKBExtendWarranty'] = extend_service
     temp['TrustCompensate'] = TrustCompensate
     temp['TrustInspection'] = 'null'
     temp['ModifiedDate'] = ModifiedDate
@@ -199,7 +224,7 @@ def get_car_info(url, temp):
     # temp['침수이력'] = car_info[14]
     # temp['useHis'] = car_info[15]
     # temp['소유자변경'] = car_info[16]
-    temp['url'] = url
+    temp['URL'] = url
     temp['SellerId'] = dealerNo
 
     temp['Location'] = dealer_location
@@ -314,6 +339,7 @@ def get_history(url, temp):
     str_len = len('carHistorySeq = "')
     carHistorySeq = soup[soup.index(
         'carHistorySeq = "')+str_len:soup.index('"', soup.index('carHistorySeq = "')+str_len)]
+
     headers = {
         'Accept': 'text/html,application/xhtml+xml,application/xml;q=0.9,image/avif,image/webp,image/apng,*/*;q=0.8,application/signed-exchange;v=b3;q=0.9',
         'Accept-Encoding': 'gzip, deflate, br',
@@ -339,14 +365,16 @@ def get_history(url, temp):
     response = requests.post(
         'https://www.kbchachacha.com/public/layer/car/history/info.kbc', headers=headers, data=datas)
     soup = bs(response.text, 'html.parser')
-    hide_list = soup.find('ul', {'class': 'hide-list'}
-                          ).find_all('span', {'class': 'txt'})
+
     registeredDate = soup.find('div', {'class': 'b-right'}).find_all('tr')
     registeredDate = registeredDate[3].find('td').text.strip()
-    y = registeredDate.split('-')[0] + "년"
-    m = registeredDate.split('-')[1] + "월"
-    d = registeredDate.split('-')[2] + "일"
-    registeredDate = y+m+d
+    try:
+        y = registeredDate.split('-')[0] + "년"
+        m = registeredDate.split('-')[1] + "월"
+        d = registeredDate.split('-')[2] + "일"
+        registeredDate = y+m+d
+    except:
+        registeredDate = 'null'
     noRegisterPeriod = soup.find('div', {'class', 'box-line'})
     if noRegisterPeriod.find('div', {'class', 'date'}) is None:
         noRegisterPeriod = "None"
@@ -381,25 +409,35 @@ def get_history(url, temp):
         d = date.split('-')[2] + "일"
         date = str(num) + ") : " + y+m+d
         price = history.find('span', {'class': 'cor-blue'}).text.strip()
-        HistDamage[date] = price
-    a = hide_list[0].text.strip()
-    b = hide_list[1].text.strip()
-    c = hide_list[2].text.strip()
-    if a == '없음':
-        a = '0'
-    if b == '없음':
-        b = '0'
-    if c == '없음':
-        c = '0'
+        HistDamage[date] = price.replace(',', '')
+    try:
+        hide_list = soup.find('ul', {'class': 'hide-list'}
+                              ).find_all('span', {'class': 'txt'})
+        a = hide_list[0].text.strip()
+        b = hide_list[1].text.strip()
+        c = hide_list[2].text.strip()
+        if a == '없음':
+            a = '0'
+        if b == '없음':
+            b = '0'
+        if c == '없음':
+            c = '0'
 
-    temp['AccidentHistory'] = "전손: {a}, 도난 : {b}, 침수(전손/분손) : {c}".format(
-        a=a, b=b, c=c)
+        temp['AccidentHistory'] = "전손: {a}, 도난 : {b}, 침수(전손/분손) : {c}".format(
+            a=a, b=b, c=c)
 
-    temp['UseHistory'] = hide_list[3].text.strip()
-    temp['MyDamage'] = hide_list[4].text.strip()
-    temp['OtherDamage'] = hide_list[5].text.strip()
-    temp['NumberOwnerCount'] = "{a}/ {b}".format(
-        a=hide_list[7].text.strip(), b=hide_list[6].text.strip())
+        temp['UseHistory'] = hide_list[3].text.strip()
+        temp['MyDamage'] = hide_list[4].text.strip().replace(',', '')
+        temp['OtherDamage'] = hide_list[5].text.strip().replace(',', '')
+        temp['NumberOwnerCount'] = "{a}/{b}".format(
+            a=hide_list[7].text.strip(), b=hide_list[6].text.strip())
+    except:
+        temp['AccidentHistory'] = 'null'
+        temp['UseHistory'] = 'null'
+        temp['MyDamage'] = 'null'
+        temp['OtherDamage'] = 'null'
+        temp['NumberOwnerCount'] = 'null'
+
     temp['FirstRegister'] = registeredDate
 
     if noRegisterPeriod == 'None':
@@ -453,12 +491,13 @@ def start():
         except:
             print('error in checkdata')
             pass
-
-        result.append(temp)
-
-    with open('./result.json', 'w', encoding='utf-8-sig') as outfile:
-        json.dump(result, outfile, indent=4,
-                  ensure_ascii=False, sort_keys=True)
+        # temp = get_car_info(url, temp)
+        # temp.update(get_history(url, temp))
+        # temp['Options'] = get_options(url)
+        # temp = get_checkdata(url, temp)
+        with open('./result.json', 'a', encoding='utf-8-sig') as outfile:
+            json.dump(temp, outfile, indent=4,
+                      ensure_ascii=False, sort_keys=True)
 
     print("완-----료")
 
@@ -763,7 +802,7 @@ def test(url):
 
         result.append(temp)
 
-    with open('./result.json', 'w', encoding='utf-8-sig') as outfile:
+    with open('./result.json', 'a', encoding='utf-8-sig') as outfile:
         json.dump(result, outfile, indent=4,
                   ensure_ascii=False, sort_keys=True)
 
@@ -783,7 +822,6 @@ def get_dateform(date):
             break
     result = str(y) + "년" + str(m) + "월" + str(d) + "일 " + str(time)
     return result
-
 
     # test('https://www.kbchachacha.com/public/car/detail.kbc?carSeq=20831927')
 start()

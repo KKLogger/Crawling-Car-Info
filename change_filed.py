@@ -17,26 +17,26 @@ for json_data in json_datas:
         del json_data
         print("error")
         continue
-    json_data['세부모델'] = json_data['Grade']
-    json_data['모델명'] = json_data['Badge']
-    json_data['차종'] = json_data['Model']
-    json_data['브랜드'] = json_data['Manufacturer']
-    json_data['연식'] = json_data['Year']
-    json_data['가격'] = json_data['Price']
-    json_data['연료'] = json_data['FuelType']
-    json_data['배기량'] = json_data['Displacement']
-    json_data['변속기'] = json_data['Transmission']
-    json_data['URL'] = json_data['url']
-    del json_data['Grade']
-    del json_data['url']
-    del json_data['Badge']
-    del json_data['Model']
-    del json_data['Manufacturer']
-    del json_data['Year']
-    del json_data['Price']
-    del json_data['FuelType']
-    del json_data['Displacement']
-    del json_data['Transmission']
+    json_data['Grade'] = json_data['세부모델']
+    json_data['Badge'] = json_data['모델명']
+    json_data['Model'] = json_data['차종']
+    json_data['Manufacturer'] = json_data['브랜드']
+    json_data['Year'] = json_data['연식']
+    json_data['Price'] = json_data['가격']
+    json_data['FuelType'] = json_data['연료']
+    json_data['Displacement'] = json_data['배기량']
+    json_data['Transmission'] = json_data['변속기']
+
+    # ExtendWarranty 추가
+    del json_data['세부모델']
+    del json_data['모델명']
+    del json_data['차종']
+    del json_data['브랜드']
+    del json_data['연식']
+    del json_data['가격']
+    del json_data['연료']
+    del json_data['배기량']
+    del json_data['변속기']
     result.append(json_data)
 print(len(result))
 with open('./result_ss.json', 'w', encoding='utf-8-sig') as outfile:
