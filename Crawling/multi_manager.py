@@ -458,7 +458,7 @@ def get_history(url, temp):
     # main
 
 
-def start(url, result_list):
+def start(url, result_list, num):
 
     # for url in urls:
     #     print(url)
@@ -495,6 +495,9 @@ def start(url, result_list):
     # temp.update(get_history(url, temp))
     # temp['Options'] = get_options(url)
     # temp = get_checkdata(url, temp)
+    num[0] += 1
+    print(
+        "+++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++current", num[0])
     if bool(temp):
         result_list.append(temp)
 
@@ -825,9 +828,11 @@ if __name__ == '__main__':
 
     freeze_support()
     result_list = Manager().list()
+    num = Manager().list()
+    num.append(0)
     df = pd.read_csv('filtered_url.csv')
     car_urls = list(df['url'].values)
-    # car_urls = car_urls[:100]
+    print(len(car_urls))
     num_cores = multiprocessing.cpu_count()
     # https://dailyheumsi.tistory.com/105
     pool = Pool(processes=num_cores)
@@ -836,10 +841,10 @@ if __name__ == '__main__':
     # splited_data = list(splited_data)
     # print(splited_data)
     # pool.map(start, car_urls)
-    pool.starmap(start, zip(car_urls, repeat(result_list)))
+    pool.starmap(start, zip(car_urls, repeat(result_list), repeat(num)))
 
     with open('./result.json', 'w', encoding='utf-8') as outfile:
-        json.dump(result_list, outfile, indent=4,
+        json.dump(list(result_list), outfile, indent=4,
                   ensure_ascii=False, sort_keys=True)
     # ,urls_3,urls_4,urls_5,urls_6,urls_7,urls_8,urls_9,urls_10,urls_11,urls_12,urls_13,urls_14])
     pool.close()
