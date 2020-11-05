@@ -495,9 +495,11 @@ def start(url):
     # temp.update(get_history(url, temp))
     # temp['Options'] = get_options(url)
     # temp = get_checkdata(url, temp)
-    with open('./result.json', 'a', encoding='utf-8-sig') as outfile:
-        json.dump(temp, outfile, indent=4,
-                  ensure_ascii=False, sort_keys=True)
+    if bool(temp):
+        with open('./result.json', 'a', encoding='utf-8') as outfile:
+            json.dump(temp, outfile, indent=4,
+                      ensure_ascii=False, sort_keys=True)
+            json.dump(',', outfile)
 
 
 def crawl_iframe(url, temp):
@@ -826,29 +828,17 @@ def get_dateform(date):
 if __name__ == '__main__':
 
     freeze_support()
+
     df = pd.read_csv('filtered_url.csv')
     car_urls = list(df['url'].values)
+    # car_urls = car_urls[:100]
     num_cores = multiprocessing.cpu_count()
     # https://dailyheumsi.tistory.com/105
-    pool = Pool(processes=num_cores)
+    pool = Pool(processes=6)
     # pool = Pool()
     # splited_data = np.array_split(car_urls, num_cores)
     # splited_data = list(splited_data)
     # print(splited_data)
-    urls_1 = car_urls[:10000]
-    urls_2 = car_urls[10000:20000]
-    urls_3 = car_urls[20000:30000]
-    urls_4 = car_urls[30000:40000]
-    urls_5 = car_urls[40000:50000]
-    urls_6 = car_urls[50000:60000]
-    urls_7 = car_urls[60000:70000]
-    urls_8 = car_urls[70000:80000]
-    urls_9 = car_urls[80000:90000]
-    urls_10 = car_urls[90000:100000]
-    urls_11 = car_urls[100000:110000]
-    urls_12 = car_urls[110000:120000]
-    urls_13 = car_urls[120000:130000]
-    urls_14 = car_urls[130000:]
     pool.map(start, car_urls)
     # pool.starmap(start, [zip(urls_1), zip(urls_2)])
     # ,urls_3,urls_4,urls_5,urls_6,urls_7,urls_8,urls_9,urls_10,urls_11,urls_12,urls_13,urls_14])
