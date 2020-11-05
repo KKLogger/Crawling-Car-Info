@@ -31,12 +31,12 @@ def get_car_urls():
             response = requests.get(url)
             soup = bs(response.text, "html.parser")
             print(page_num)
-            #######종료 조건 ###############
-            if page_num == 3:
-                break
-            # if soup.find('span', {'class': 'txt'}) is not None:
-            #     print('종료')
+            ########종료 조건 ###############
+            # if page_num == 3:
             #     break
+            if soup.find('span', {'class': 'txt'}) is not None:
+                print('종료')
+                break
 
             items = soup.find_all('a')
             for item in items:
@@ -253,6 +253,7 @@ def get_options(url):
         'Pragma': 'no-cache',
         'Sec-Fetch-Dest': 'iframe',
         'Sec-Fetch-Mode': 'navigate',
+        'Cookie': 'WMONID=DIsAC5YxLe8; FIRST_APPROCH=y; _ga=GA1.2.89915624.1602553615; cha-cid=30c7e5e5-abc7-41bd-8d7f-bf0db71fc3b2; C_PC_LOGIN_TAB=031100; TR10062602448_t_pa1=3.0.0.132622.null.null.null.52525333192658139; TR10062602448_t_pa2=3.0.0.132622.null.null.null.52525333192658139; car-keyword-code=1011212277324445%3A6; _gid=GA1.2.1217362369.1604476473; recent-visited-car=20633536; page-no-action-count=5; JSESSIONID=iW2ZmuL0VQaQIiFbL4CJ9XiAgxYPpTMsbq6SiXGWmbE3j061VblYAaMU8NrJAM8X.cGNoYWFwbzFfZG9tYWluL0NBUjNBUF9zZXJ2ZXIyX2Nz; _gac_UA-78571735-4=1.1604578759.CjwKCAiA4o79BRBvEiwAjteoYJvnkHPDcj3Ta3kbmks3YndGqrgyYVHE4DQP0PQ3HzAAKsqB9f5i-hoCnS4QAvD_BwE; _gat_UA-78571735-4=1; TR10062602448_t_uid=49545853018139668.1604578760316; TR10062602448_t_sst=49545577600001139.1604578760316; TR10062602448_t_if=15.0.0.0.null.null.null.0',
         'Sec-Fetch-Site': 'same-origin',
         'Sec-Fetch-User': '?1',
         'Upgrade-Insecure-Requests': '1',
@@ -355,6 +356,7 @@ def get_history(url, temp):
         'Host': 'www.kbchachacha.com',
         'Origin': 'https://www.kbchachacha.com',
         'Referer': url,
+        'Cookie': 'WMONID=DIsAC5YxLe8; FIRST_APPROCH=y; _ga=GA1.2.89915624.1602553615; cha-cid=30c7e5e5-abc7-41bd-8d7f-bf0db71fc3b2; C_PC_LOGIN_TAB=031100; TR10062602448_t_pa1=3.0.0.132622.null.null.null.52525333192658139; TR10062602448_t_pa2=3.0.0.132622.null.null.null.52525333192658139; car-keyword-code=1011212277324445%3A6; _gid=GA1.2.1217362369.1604476473; recent-visited-car=20633536; page-no-action-count=5; JSESSIONID=iW2ZmuL0VQaQIiFbL4CJ9XiAgxYPpTMsbq6SiXGWmbE3j061VblYAaMU8NrJAM8X.cGNoYWFwbzFfZG9tYWluL0NBUjNBUF9zZXJ2ZXIyX2Nz; _gac_UA-78571735-4=1.1604578759.CjwKCAiA4o79BRBvEiwAjteoYJvnkHPDcj3Ta3kbmks3YndGqrgyYVHE4DQP0PQ3HzAAKsqB9f5i-hoCnS4QAvD_BwE; _gat_UA-78571735-4=1; TR10062602448_t_uid=49545853018139668.1604578760316; TR10062602448_t_sst=49545577600001139.1604578760316; TR10062602448_t_if=15.0.0.0.null.null.null.0',
         'Sec-Fetch-Dest': 'iframe',
         'Sec-Fetch-Mode': 'navigate',
         'Sec-Fetch-Site': 'same-origin',
@@ -499,7 +501,9 @@ def start(url, result_list, num):
     print(
         "+++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++current", num[0])
     if bool(temp):
-        result_list.append(temp)
+        with open('./result.json', 'a', encoding='utf-8-sig') as outfile:
+            json.dump(temp, outfile, indent=4,
+                      ensure_ascii=False, sort_keys=True)
 
 
 def crawl_iframe(url, temp):
@@ -735,6 +739,7 @@ def get_checkdata(url, temp):
         'Sec-Fetch-Dest': 'document',
         'Sec-Fetch-Mode': 'navigate',
         'Sec-Fetch-Site': 'none',
+        'Cookie': 'WMONID=DIsAC5YxLe8; FIRST_APPROCH=y; _ga=GA1.2.89915624.1602553615; cha-cid=30c7e5e5-abc7-41bd-8d7f-bf0db71fc3b2; C_PC_LOGIN_TAB=031100; TR10062602448_t_pa1=3.0.0.132622.null.null.null.52525333192658139; TR10062602448_t_pa2=3.0.0.132622.null.null.null.52525333192658139; car-keyword-code=1011212277324445%3A6; _gid=GA1.2.1217362369.1604476473; recent-visited-car=20633536; page-no-action-count=5; JSESSIONID=iW2ZmuL0VQaQIiFbL4CJ9XiAgxYPpTMsbq6SiXGWmbE3j061VblYAaMU8NrJAM8X.cGNoYWFwbzFfZG9tYWluL0NBUjNBUF9zZXJ2ZXIyX2Nz; _gac_UA-78571735-4=1.1604578759.CjwKCAiA4o79BRBvEiwAjteoYJvnkHPDcj3Ta3kbmks3YndGqrgyYVHE4DQP0PQ3HzAAKsqB9f5i-hoCnS4QAvD_BwE; _gat_UA-78571735-4=1; TR10062602448_t_uid=49545853018139668.1604578760316; TR10062602448_t_sst=49545577600001139.1604578760316; TR10062602448_t_if=15.0.0.0.null.null.null.0',
         'Sec-Fetch-User': '?1',
         'Upgrade-Insecure-Requests': '1',
         'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/86.0.4240.75 Safari/537.36'
