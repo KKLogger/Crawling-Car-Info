@@ -1,4 +1,8 @@
 
+import numpy as np
+from multiprocessing import Pool, freeze_support, Manager
+from itertools import repeat
+import multiprocessing
 import requests
 from bs4 import BeautifulSoup as bs
 import pandas as pd
@@ -454,52 +458,46 @@ def get_history(url, temp):
     # main
 
 
-def start():
-    result = list()
-    car_urls = get_car_urls()
+def start(url):
 
-    num = 0
-    for url in car_urls:
-        print(url)
-        num += 1
-        print(len(car_urls), "중에", num)
-        temp = dict()
-        try:
-            temp = get_car_info(
-                url, temp)
-            print('done car_info')
-        except:
-            print('error in car_info')
-            pass
-        try:
-            temp.update(get_history(
-                url, temp))
-            print('done car_history')
-        except:
-            print('error in history')
-            pass
-        try:
-            temp['Options'] = get_options(
-                url)
-            print('done options')
-        except:
-            print('error in options')
-            pass
-        try:
-            temp = get_checkdata(url, temp)
-            print('done checkdata')
-        except:
-            print('error in checkdata')
-            pass
-        # temp = get_car_info(url, temp)
-        # temp.update(get_history(url, temp))
-        # temp['Options'] = get_options(url)
-        # temp = get_checkdata(url, temp)
-        with open('./result.json', 'a', encoding='utf-8-sig') as outfile:
-            json.dump(temp, outfile, indent=4,
-                      ensure_ascii=False, sort_keys=True)
-
-    print("완-----료")
+    # for url in urls:
+    #     print(url)
+    print(url)
+    temp = dict()
+    try:
+        temp = get_car_info(
+            url, temp)
+        print('done car_info')
+    except:
+        print('error in car_info')
+        pass
+    try:
+        temp.update(get_history(
+            url, temp))
+        print('done car_history')
+    except:
+        print('error in history')
+        pass
+    try:
+        temp['Options'] = get_options(
+            url)
+        print('done options')
+    except:
+        print('error in options')
+        pass
+    try:
+        temp = get_checkdata(url, temp)
+        print('done checkdata')
+    except:
+        print('error in checkdata')
+        pass
+    # temp = get_car_info(url, temp)
+    # temp.update(get_history(url, temp))
+    # temp['Options'] = get_options(url)
+    # temp = get_checkdata(url, temp)
+    with open('./result.json', 'a', encoding='utf-8-sig') as outfile:
+        json.dump(temp, outfile, indent=4,
+                  ensure_ascii=False, sort_keys=True)
 
 
 def crawl_iframe(url, temp):
@@ -823,5 +821,36 @@ def get_dateform(date):
     result = str(y) + "년" + str(m) + "월" + str(d) + "일 " + str(time)
     return result
 
+
     # test('https://www.kbchachacha.com/public/car/detail.kbc?carSeq=20831927')
-start()
+if __name__ == '__main__':
+
+    freeze_support()
+    df = pd.read_csv('filtered_url.csv')
+    car_urls = list(df['url'].values)
+    num_cores = multiprocessing.cpu_count()
+    # https://dailyheumsi.tistory.com/105
+    pool = Pool(processes=num_cores)
+    # pool = Pool()
+    # splited_data = np.array_split(car_urls, num_cores)
+    # splited_data = list(splited_data)
+    # print(splited_data)
+    urls_1 = car_urls[:10000]
+    urls_2 = car_urls[10000:20000]
+    urls_3 = car_urls[20000:30000]
+    urls_4 = car_urls[30000:40000]
+    urls_5 = car_urls[40000:50000]
+    urls_6 = car_urls[50000:60000]
+    urls_7 = car_urls[60000:70000]
+    urls_8 = car_urls[70000:80000]
+    urls_9 = car_urls[80000:90000]
+    urls_10 = car_urls[90000:100000]
+    urls_11 = car_urls[100000:110000]
+    urls_12 = car_urls[110000:120000]
+    urls_13 = car_urls[120000:130000]
+    urls_14 = car_urls[130000:]
+    pool.map(start, car_urls)
+    # pool.starmap(start, [zip(urls_1), zip(urls_2)])
+    # ,urls_3,urls_4,urls_5,urls_6,urls_7,urls_8,urls_9,urls_10,urls_11,urls_12,urls_13,urls_14])
+    pool.close()
+    pool.join()
