@@ -1,55 +1,14 @@
-
-import numpy as np
-from multiprocessing import Pool, freeze_support, Manager
-from itertools import repeat
+import sys
+from ast import literal_eval
+import json
 import multiprocessing
+from itertools import repeat
+from multiprocessing import Pool, freeze_support, Manager
 import requests
 from bs4 import BeautifulSoup as bs
+import numpy as np
+import requests
 import pandas as pd
-import json
-from urllib.request import urlopen
-
-
-def get_page_url(page_num, user_code):
-    url = 'https://www.kbchachacha.com/public/search/list.empty?page=' + \
-        str(page_num) + '&sort=-orderDate&useCode=' + \
-        str(user_code) + '&_pageSize=3&pageSize=4'
-    return url
-
-
-def get_car_urls():
-
-    car_url_list = list()
-    user_codes = ['002001', '002002', '002003', '002004', '002005', '002006',
-                  '002007', '002008', '002009', '002010', '002011', '002012', '002013']
-    for user_code in user_codes:
-        page_num = 0
-        while(True):
-            page_num += 1
-            url = get_page_url(page_num, user_code)
-            print(url)
-            response = requests.get(url)
-            soup = bs(response.text, "html.parser")
-            print(page_num)
-            ########종료 조건 ###############
-            # if page_num == 3:
-            #     break
-            if soup.find('span', {'class': 'txt'}) is not None:
-                print('종료')
-                break
-
-            items = soup.find_all('a')
-            for item in items:
-                if 'detail.kbc?carSeq' in item['href']:
-                    item_href = item['href']
-                    if 'https://' in item_href:
-                        car_url_list.append(item_href)
-                    else:
-                        car_url_list.append(
-                            'https://www.kbchachacha.com' + item_href)
-
-    car_url_list = list(set(car_url_list))
-    return car_url_list
 
 
 def get_car_info(url, temp):
@@ -460,50 +419,48 @@ def get_history(url, temp):
     # main
 
 
-def start(url, num):
+def start(urls, server_num):
+    num = 0
+    for url in urls:
+        temp = dict()
+        try:
+            temp = get_car_info(
+                url, temp)
 
-    # for url in urls:
-    #     print(url)
-    print(url)
-    temp = dict()
-    try:
-        temp = get_car_info(
-            url, temp)
-        print('done car_info')
-    except:
-        print('error in car_info')
-        pass
-    try:
-        temp.update(get_history(
-            url, temp))
-        print('done car_history')
-    except:
-        print('error in history')
-        pass
-    try:
-        temp['Options'] = get_options(
-            url)
-        print('done options')
-    except:
-        print('error in options')
-        pass
-    try:
-        temp = get_checkdata(url, temp)
-        print('done checkdata')
-    except:
-        print('error in checkdata')
-        pass
-    # temp = get_car_info(url, temp)
-    # temp.update(get_history(url, temp))
-    # temp['Options'] = get_options(url)
-    # temp = get_checkdata(url, temp)
-    num[0] += 1
-    print(
-        "+++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++current", num[0])
-    if bool(temp):
-        with open('./result.json', 'a', encoding='utf-8-sig') as outfile:
-            json.dump(temp, outfile, indent=4,
-                      ensure_ascii=False, sort_keys=True)
+        except:
+            print('error in car_info')
+            pass
+        try:
+            temp.update(get_history(
+                url, temp))
+
+        except:
+            print('error in history')
+            pass
+        try:
+            temp['Options'] = get_options(
+                url)
+
+        except:
+            print('error in options')
+            pass
+        try:
+            temp = get_checkdata(url, temp)
+
+        except:
+            print('error in checkdata')
+            pass
+        # temp = get_car_info(url, temp)
+        # temp.update(get_history(url, temp))
+        # temp['Options'] = get_options(url)
+        # temp = get_checkdata(url, temp)
+        num += 1
+
+        print("현재 : ", num)
+        if bool(temp):
+            with open('./result.json{server_num}'.format(server_num=server_num), 'a', encoding='utf-8-sig') as outfile:
+                json.dump(temp, outfile, indent=4,
+                          ensure_ascii=False, sort_keys=True)
 
 
 def crawl_iframe(url, temp):
@@ -783,7 +740,6 @@ def get_checkdata(url, temp):
     return temp
 
 
-
 def get_dateform(date):
     y = date[3]
     m = date[2]
@@ -798,26 +754,42 @@ def get_dateform(date):
     result = str(y) + "년" + str(m) + "월" + str(d) + "일 " + str(time)
     return result
 
-    # test('https://www.kbchachacha.com/public/car/detail.kbc?carSeq=20831927')
-if __name__ == '__main__':
 
-    freeze_support()
-    result_list = Manager().list()
-    num = Manager().list()
-    num.append(0)
-    df = pd.read_csv('filtered_url.csv')
-    car_urls = list(df['url'].values)
-    print(len(car_urls))
-    num_cores = multiprocessing.cpu_count()
-    # https://dailyheumsi.tistory.com/105
-    pool = Pool(processes=num_cores)
-    # pool = Pool()
-    # splited_data = np.array_split(car_urls, num_cores)
-    # splited_data = list(splited_data)
-    # print(splited_data)
-    # pool.map(start, car_urls)
-    pool.starmap(start, zip(car_urls, repeat(num)))
+def process_json():
 
-    # ,urls_3,urls_4,urls_5,urls_6,urls_7,urls_8,urls_9,urls_10,urls_11,urls_12,urls_13,urls_14])
-    pool.close()
-    pool.join()
+    result = list()
+    with open('result.json', encoding='utf-8-sig', errors='ignore') as f:
+        str_data = f.read()
+    str_data = str(str_data)
+    str_data = str_data[:]
+    str_data = str_data.replace('{}', "")
+    str_data = str_data.replace('}{', "}///{")
+    str_datas = str_data.split('///')
+    str_datas = [x.replace("'", '"') for x in str_datas]
+    num = 0
+
+    for str_data in str_datas:
+        num += 1
+
+        try:
+            dict_data = literal_eval(str_data)
+            json_data = json.loads(str_data)
+            result.append(dict_data)
+        except:
+            print("Fail", num)
+
+    print("총 json에 차량 개수 ", len(result))
+    with open('result_t.json', 'w', encoding='utf-8-sig') as ff:
+        json.dump(result, ff, indent=4, ensure_ascii=False, sort_keys=True)
+
+
+with open('Crawling/to_server/argu.txt', 'r') as f:
+    server_num = f.read()
+num_per_url = 5000
+num = 0
+df = pd.read_csv('filtered_url.csv')
+car_urls = list(df['url'].values)
+car_urls = car_urls[num_per_url*(server_num-1):num_per_url*server_num]
+print(len(car_urls))
+start()
+process_json()

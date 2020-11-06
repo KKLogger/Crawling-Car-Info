@@ -45,7 +45,9 @@ def get_car_urls(user_code, car_url_list):
             if soup.find('span', {'class': 'txt'}) is not None:
                 print('종료')
                 break
-
+            if soup.find('h2') is None:
+                print('종료, blocked')
+                break
             items = soup.find_all('a')
             for item in items:
                 if 'detail.kbc?carSeq' in item['href']:
