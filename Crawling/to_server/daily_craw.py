@@ -1,14 +1,49 @@
-import sys
+import os
 from ast import literal_eval
-import json
-import multiprocessing
-from itertools import repeat
-from multiprocessing import Pool, freeze_support, Manager
 import requests
 from bs4 import BeautifulSoup as bs
-import numpy as np
-import requests
 import pandas as pd
+import json
+from urllib.request import urlopen
+from fake_useragent import UserAgent
+
+
+def get_page_url(page_num):
+    url = 'https://www.kbchachacha.com/public/search/list.empty?page=' + \
+        str(page_num) + '&sort=-orderDate&useCode=' + '&_pageSize=3&pageSize=4'
+    return url
+
+
+def get_car_urls():
+
+    car_url_list = list()
+    page_num = 0
+    while(True):
+        page_num += 1
+        url = get_page_url(page_num)
+        print(url)
+        response = requests.get(url)
+        soup = bs(response.text, "html.parser")
+        print(page_num)
+        #######종료 조건 ###############
+        if page_num == 50:
+            break
+        # if soup.find('span', {'class': 'txt'}) is not None:
+        #     print('종료')
+        #     break
+
+        items = soup.find_all('a')
+        for item in items:
+            if 'detail.kbc?carSeq' in item['href']:
+                item_href = item['href']
+                if 'https://' in item_href:
+                    car_url_list.append(item_href)
+                else:
+                    car_url_list.append(
+                        'https://www.kbchachacha.com' + item_href)
+
+    car_url_list = list(set(car_url_list))
+    return car_url_list
 
 
 def get_car_info(url, temp):
@@ -212,7 +247,6 @@ def get_options(url):
         'Pragma': 'no-cache',
         'Sec-Fetch-Dest': 'iframe',
         'Sec-Fetch-Mode': 'navigate',
-        'Cookie': 'WMONID=DIsAC5YxLe8; FIRST_APPROCH=y; _ga=GA1.2.89915624.1602553615; cha-cid=30c7e5e5-abc7-41bd-8d7f-bf0db71fc3b2; C_PC_LOGIN_TAB=031100; TR10062602448_t_pa1=3.0.0.132622.null.null.null.52525333192658139; TR10062602448_t_pa2=3.0.0.132622.null.null.null.52525333192658139; car-keyword-code=1011212277324445%3A6; _gid=GA1.2.1217362369.1604476473; recent-visited-car=20633536; page-no-action-count=5; JSESSIONID=iW2ZmuL0VQaQIiFbL4CJ9XiAgxYPpTMsbq6SiXGWmbE3j061VblYAaMU8NrJAM8X.cGNoYWFwbzFfZG9tYWluL0NBUjNBUF9zZXJ2ZXIyX2Nz; _gac_UA-78571735-4=1.1604578759.CjwKCAiA4o79BRBvEiwAjteoYJvnkHPDcj3Ta3kbmks3YndGqrgyYVHE4DQP0PQ3HzAAKsqB9f5i-hoCnS4QAvD_BwE; _gat_UA-78571735-4=1; TR10062602448_t_uid=49545853018139668.1604578760316; TR10062602448_t_sst=49545577600001139.1604578760316; TR10062602448_t_if=15.0.0.0.null.null.null.0',
         'Sec-Fetch-Site': 'same-origin',
         'Sec-Fetch-User': '?1',
         'Upgrade-Insecure-Requests': '1',
@@ -315,7 +349,6 @@ def get_history(url, temp):
         'Host': 'www.kbchachacha.com',
         'Origin': 'https://www.kbchachacha.com',
         'Referer': url,
-        'Cookie': 'WMONID=DIsAC5YxLe8; FIRST_APPROCH=y; _ga=GA1.2.89915624.1602553615; cha-cid=30c7e5e5-abc7-41bd-8d7f-bf0db71fc3b2; C_PC_LOGIN_TAB=031100; TR10062602448_t_pa1=3.0.0.132622.null.null.null.52525333192658139; TR10062602448_t_pa2=3.0.0.132622.null.null.null.52525333192658139; car-keyword-code=1011212277324445%3A6; _gid=GA1.2.1217362369.1604476473; recent-visited-car=20633536; page-no-action-count=5; JSESSIONID=iW2ZmuL0VQaQIiFbL4CJ9XiAgxYPpTMsbq6SiXGWmbE3j061VblYAaMU8NrJAM8X.cGNoYWFwbzFfZG9tYWluL0NBUjNBUF9zZXJ2ZXIyX2Nz; _gac_UA-78571735-4=1.1604578759.CjwKCAiA4o79BRBvEiwAjteoYJvnkHPDcj3Ta3kbmks3YndGqrgyYVHE4DQP0PQ3HzAAKsqB9f5i-hoCnS4QAvD_BwE; _gat_UA-78571735-4=1; TR10062602448_t_uid=49545853018139668.1604578760316; TR10062602448_t_sst=49545577600001139.1604578760316; TR10062602448_t_if=15.0.0.0.null.null.null.0',
         'Sec-Fetch-Dest': 'iframe',
         'Sec-Fetch-Mode': 'navigate',
         'Sec-Fetch-Site': 'same-origin',
@@ -345,7 +378,8 @@ def get_history(url, temp):
         noRegisterPeriod = "None"
     else:
         noRegisterPeriod = noRegisterPeriod.find_all('div', {'class', 'date'})
-        noRegisterPeriod = [x.text for x in noRegisterPeriod]
+        noRegisterPeriod = [x.text.replace(' ', '') for x in noRegisterPeriod]
+
     historys = soup.find_all(
         'div', {'class': 'cmm-table table-l02 ct-line td-ptb-15'})
     HistDamage = dict()
@@ -420,34 +454,40 @@ def get_history(url, temp):
     # main
 
 
-def start(urls, server_num):
+def start():
+    result = list()
+    car_urls = get_car_urls()
+
     num = 0
-    for url in urls:
+    for url in car_urls:
+        print(url)
+        num += 1
+        print(len(car_urls), "중에", num)
         temp = dict()
         try:
             temp = get_car_info(
                 url, temp)
-
+            print('done car_info')
         except:
             print('error in car_info')
             pass
         try:
             temp.update(get_history(
                 url, temp))
-
+            print('done car_history')
         except:
             print('error in history')
             pass
         try:
             temp['Options'] = get_options(
                 url)
-
+            print('done options')
         except:
             print('error in options')
             pass
         try:
             temp = get_checkdata(url, temp)
-
+            print('done checkdata')
         except:
             print('error in checkdata')
             pass
@@ -455,13 +495,11 @@ def start(urls, server_num):
         # temp.update(get_history(url, temp))
         # temp['Options'] = get_options(url)
         # temp = get_checkdata(url, temp)
-        num += 1
+        with open('/home/centos/chan//result_t.json', 'a', encoding='utf-8-sig') as outfile:
+            json.dump(temp, outfile, indent=4,
+                      ensure_ascii=False, sort_keys=True)
 
-        print("현재 : ", num)
-        if bool(temp):
-            with open('./result.json{server_num}'.format(server_num=server_num), 'a', encoding='utf-8-sig') as outfile:
-                json.dump(temp, outfile, indent=4,
-                          ensure_ascii=False, sort_keys=True)
+    print("완-----료")
 
 
 def crawl_iframe(url, temp):
@@ -697,7 +735,6 @@ def get_checkdata(url, temp):
         'Sec-Fetch-Dest': 'document',
         'Sec-Fetch-Mode': 'navigate',
         'Sec-Fetch-Site': 'none',
-        'Cookie': 'WMONID=DIsAC5YxLe8; FIRST_APPROCH=y; _ga=GA1.2.89915624.1602553615; cha-cid=30c7e5e5-abc7-41bd-8d7f-bf0db71fc3b2; C_PC_LOGIN_TAB=031100; TR10062602448_t_pa1=3.0.0.132622.null.null.null.52525333192658139; TR10062602448_t_pa2=3.0.0.132622.null.null.null.52525333192658139; car-keyword-code=1011212277324445%3A6; _gid=GA1.2.1217362369.1604476473; recent-visited-car=20633536; page-no-action-count=5; JSESSIONID=iW2ZmuL0VQaQIiFbL4CJ9XiAgxYPpTMsbq6SiXGWmbE3j061VblYAaMU8NrJAM8X.cGNoYWFwbzFfZG9tYWluL0NBUjNBUF9zZXJ2ZXIyX2Nz; _gac_UA-78571735-4=1.1604578759.CjwKCAiA4o79BRBvEiwAjteoYJvnkHPDcj3Ta3kbmks3YndGqrgyYVHE4DQP0PQ3HzAAKsqB9f5i-hoCnS4QAvD_BwE; _gat_UA-78571735-4=1; TR10062602448_t_uid=49545853018139668.1604578760316; TR10062602448_t_sst=49545577600001139.1604578760316; TR10062602448_t_if=15.0.0.0.null.null.null.0',
         'Sec-Fetch-User': '?1',
         'Upgrade-Insecure-Requests': '1',
         'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/86.0.4240.75 Safari/537.36'
@@ -727,6 +764,10 @@ def get_checkdata(url, temp):
             if soup.find('div', {'class': 'ch-car-name'}) == None:
                 temp['CHECK_INNER'] = "null"
                 temp['CHECK_OUTER'] = "null"
+                temp['RegistrationID'] = "null"
+                temp['MotorType'] = 'null'
+                temp['WarrantyType'] = 'null'
+                temp['IssueDt'] = 'null'
                 # print("None Data")
                 pass
             else:
@@ -737,6 +778,10 @@ def get_checkdata(url, temp):
             # print("image")
             temp['CHECK_INNER'] = "null"
             temp['CHECK_OUTER'] = "null"
+            temp['RegistrationID'] = "null"
+            temp['MotorType'] = 'null'
+            temp['WarrantyType'] = 'null'
+            temp['IssueDt'] = 'null'
 
     return temp
 
@@ -759,7 +804,7 @@ def get_dateform(date):
 def process_json():
 
     result = list()
-    with open('result.json', encoding='utf-8-sig', errors='ignore') as f:
+    with open('/home/centos/chan/result_t.json', encoding='utf-8-sig', errors='ignore') as f:
         str_data = f.read()
     str_data = str(str_data)
     str_data = str_data[:]
@@ -778,19 +823,12 @@ def process_json():
             result.append(dict_data)
         except:
             print("Fail", num)
-
+    os.remove('/home/centos/chan/result_t.json')
     print("총 json에 차량 개수 ", len(result))
-    with open('result_t.json', 'w', encoding='utf-8-sig') as ff:
+    with open('/home/centos/chan/result.json', 'a', encoding='utf-8-sig') as ff:
         json.dump(result, ff, indent=4, ensure_ascii=False, sort_keys=True)
 
 
-with open('Crawling/to_server/argu.txt', 'r') as f:
-    server_num = f.read()
-num_per_url = 5000
-num = 0
-df = pd.read_csv('filtered_url.csv')
-car_urls = list(df['url'].values)
-car_urls = car_urls[num_per_url*(server_num-1):num_per_url*server_num]
-print(len(car_urls))
+# test('https://www.kbchachacha.com/public/car/detail.kbc?carSeq=20831927')
 start()
 process_json()
