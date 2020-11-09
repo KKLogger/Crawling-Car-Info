@@ -1,3 +1,4 @@
+import os
 import sys
 from ast import literal_eval
 import json
@@ -342,10 +343,11 @@ def get_history(url, temp):
         registeredDate = 'null'
     noRegisterPeriod = soup.find('div', {'class', 'box-line'})
     if noRegisterPeriod.find('div', {'class', 'date'}) is None:
-        noRegisterPeriod = "None"
+        noRegisterPeriod = "none"
     else:
         noRegisterPeriod = noRegisterPeriod.find_all('div', {'class', 'date'})
         noRegisterPeriod = [x.text for x in noRegisterPeriod]
+
     historys = soup.find_all(
         'div', {'class': 'cmm-table table-l02 ct-line td-ptb-15'})
     HistDamage = dict()
@@ -369,13 +371,19 @@ def get_history(url, temp):
         def __lt__(self, other):
             return self.num < other.num
     for num, history in enumerate(historys):
-        date = history.find('th').text.strip()
-        y = date.split('-')[0] + "년"
-        m = date.split('-')[1] + "월"
-        d = date.split('-')[2] + "일"
-        date = str(num) + ") : " + y+m+d
-        price = history.find('span', {'class': 'cor-blue'}).text.strip()
-        HistDamage[date] = price.replace(',', '')
+        # 내차 피해
+        if history.find('tbody').find('tr').find_all('td')[1].text.strip() == '-':
+            date = history.find('th').text.strip()
+            y = date.split('-')[0] + "년"
+            m = date.split('-')[1] + "월"
+            d = date.split('-')[2] + "일"
+            date = y+m+d
+            # date = str(num) + ") : " + y+m+d
+            price = history.find('span', {'class': 'cor-blue'}).text.strip()
+            HistDamage[date] = price.replace(',', '')
+    else:  # 상대차 피해
+        pass
+
     try:
         hide_list = soup.find('ul', {'class': 'hide-list'}
                               ).find_all('span', {'class': 'txt'})
@@ -459,7 +467,7 @@ def start(urls, server_num):
 
         print("현재 : ", num)
         if bool(temp):
-            with open('./result.json{server_num}'.format(server_num=server_num), 'a', encoding='utf-8-sig') as outfile:
+            with open('result{server_num}_t.json'.format(server_num=server_num), 'a', encoding='utf-8-sig') as outfile:
                 json.dump(temp, outfile, indent=4,
                           ensure_ascii=False, sort_keys=True)
 
@@ -727,16 +735,21 @@ def get_checkdata(url, temp):
             if soup.find('div', {'class': 'ch-car-name'}) == None:
                 temp['CHECK_INNER'] = "null"
                 temp['CHECK_OUTER'] = "null"
-                # print("None Data")
-                pass
+                temp['RegistrationID'] = "null"
+                temp['MotorType'] = 'null'
+                temp['WarrantyType'] = 'null'
+                temp['IssueDt'] = 'null'
             else:
                 # call iframe scraper
                 temp = crawl_iframe(url, temp)
 
         else:
-            # print("image")
             temp['CHECK_INNER'] = "null"
             temp['CHECK_OUTER'] = "null"
+            temp['RegistrationID'] = "null"
+            temp['MotorType'] = 'null'
+            temp['WarrantyType'] = 'null'
+            temp['IssueDt'] = 'null'
 
     return temp
 
@@ -756,10 +769,10 @@ def get_dateform(date):
     return result
 
 
-def process_json():
+def process_json(server_num):
 
     result = list()
-    with open('result.json', encoding='utf-8-sig', errors='ignore') as f:
+    with open('result{server_num}_t.json'.format(server_num=server_num), encoding='utf-8-sig', errors='ignore') as f:
         str_data = f.read()
     str_data = str(str_data)
     str_data = str_data[:]
@@ -780,17 +793,23 @@ def process_json():
             print("Fail", num)
 
     print("총 json에 차량 개수 ", len(result))
-    with open('result_t.json', 'w', encoding='utf-8-sig') as ff:
+    os.remove('result{server_num}_t.json'.format(server_num=server_num))
+    with open('result{server_num}.json'.format(server_num=server_num), 'w', encoding='utf-8-sig') as ff:
         json.dump(result, ff, indent=4, ensure_ascii=False, sort_keys=True)
 
 
-with open('Crawling/to_server/argu.txt', 'r') as f:
+with open('C:/Users/koc08/바탕 화면/Crawling Car Info/Crawling/to_server/argu.txt', 'r') as f:
     server_num = f.read()
-num_per_url = 5000
+num_per_url = 3
 num = 0
-df = pd.read_csv('filtered_url.csv')
-car_urls = list(df['url'].values)
-car_urls = car_urls[num_per_url*(server_num-1):num_per_url*server_num]
+# df = pd.read_csv('filtered_url.csv')
+# car_urls = list(df['url'].values)
+# car_urls = car_urls[num_per_url*(server_num-1):num_per_url*server_num]
+car_urls = ['https://www.kbchachacha.com/public/car/detail.kbc?carSeq=20752233',
+            'https://www.kbchachacha.com/public/car/detail.kbc?carSeq=11172082',
+            'https://www.kbchachacha.com/public/car/detail.kbc?carSeq=20867234',
+            'https://www.kbchachacha.com/public/car/detail.kbc?carSeq=20867414',
+            'https://www.kbchachacha.com/public/car/detail.kbc?carSeq=20899388']
 print(len(car_urls))
-start()
-process_json()
+start(car_urls, server_num)
+process_json(server_num)

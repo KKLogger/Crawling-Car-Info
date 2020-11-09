@@ -4,7 +4,7 @@ import requests
 from bs4 import BeautifulSoup as bs
 from multiprocessing import Pool, freeze_support, Manager
 import pandas as pd
-
+import time
 
 def get_page_url(page_num, user_code, maker_code):
     url = 'https://www.kbchachacha.com/public/search/list.empty?page=' + \
@@ -33,6 +33,7 @@ def get_car_urls(user_code, car_url_list):
     for maker_code in maker_codes:
         page_num = 0
         while(True):
+            time.sleep(3)
             page_num += 1
             url = get_page_url(page_num, user_code, maker_code)
             print(url)
@@ -68,7 +69,7 @@ if __name__ == '__main__':
     car_url_list = manager.list()
     num_cores = multiprocessing.cpu_count()
     # https://dailyheumsi.tistory.com/105
-    pool = Pool(processes=num_cores)
+    pool = Pool(processes=6)
     pool.starmap(get_car_urls, zip(['002001', '002002', '002003', '002004', '002005', '002006',
                                     '002007', '002008', '002009', '002010', '002011', '002012', '002013'], repeat(car_url_list)))
     pool.close()

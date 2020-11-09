@@ -375,7 +375,7 @@ def get_history(url, temp):
         registeredDate = 'null'
     noRegisterPeriod = soup.find('div', {'class', 'box-line'})
     if noRegisterPeriod.find('div', {'class', 'date'}) is None:
-        noRegisterPeriod = "None"
+        noRegisterPeriod = "none"
     else:
         noRegisterPeriod = noRegisterPeriod.find_all('div', {'class', 'date'})
         noRegisterPeriod = [x.text.replace(' ', '') for x in noRegisterPeriod]
@@ -403,13 +403,19 @@ def get_history(url, temp):
         def __lt__(self, other):
             return self.num < other.num
     for num, history in enumerate(historys):
-        date = history.find('th').text.strip()
-        y = date.split('-')[0] + "년"
-        m = date.split('-')[1] + "월"
-        d = date.split('-')[2] + "일"
-        date = str(num) + ") : " + y+m+d
-        price = history.find('span', {'class': 'cor-blue'}).text.strip()
-        HistDamage[date] = price.replace(',', '')
+        # 내차 피해
+        if history.find('tbody').find('tr').find_all('td')[1].text.strip() == '-':
+            date = history.find('th').text.strip()
+            y = date.split('-')[0] + "년"
+            m = date.split('-')[1] + "월"
+            d = date.split('-')[2] + "일"
+            date = y+m+d
+            # date = str(num) + ") : " + y+m+d
+            price = history.find('span', {'class': 'cor-blue'}).text.strip()
+            HistDamage[date] = price.replace(',', '')
+    else:  # 상대차 피해
+        pass
+
     try:
         hide_list = soup.find('ul', {'class': 'hide-list'}
                               ).find_all('span', {'class': 'txt'})

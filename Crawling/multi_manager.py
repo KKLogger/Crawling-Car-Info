@@ -1,4 +1,6 @@
-
+from ast import literal_eval
+import os
+import time
 import numpy as np
 from multiprocessing import Pool, freeze_support, Manager
 from itertools import repeat
@@ -383,9 +385,10 @@ def get_history(url, temp):
         registeredDate = 'null'
     noRegisterPeriod = soup.find('div', {'class', 'box-line'})
     if noRegisterPeriod.find('div', {'class', 'date'}) is None:
-        noRegisterPeriod = "None"
+        noRegisterPeriod = "none"
     else:
-        noRegisterPeriod = noRegisterPeriod.find('div', {'class', 'date'}).text
+        noRegisterPeriod = noRegisterPeriod.find_all('div', {'class', 'date'})
+        noRegisterPeriod = [x.text.replace(' ', '') for x in noRegisterPeriod]
     historys = soup.find_all(
         'div', {'class': 'cmm-table table-l02 ct-line td-ptb-15'})
     HistDamage = dict()
@@ -409,13 +412,19 @@ def get_history(url, temp):
         def __lt__(self, other):
             return self.num < other.num
     for num, history in enumerate(historys):
-        date = history.find('th').text.strip()
-        y = date.split('-')[0] + "년"
-        m = date.split('-')[1] + "월"
-        d = date.split('-')[2] + "일"
-        date = str(num) + ") : " + y+m+d
-        price = history.find('span', {'class': 'cor-blue'}).text.strip()
-        HistDamage[date] = price.replace(',', '')
+        # 내차 피해
+        if history.find('tbody').find('tr').find_all('td')[1].text.strip() == '-':
+            date = history.find('th').text.strip()
+            y = date.split('-')[0] + "년"
+            m = date.split('-')[1] + "월"
+            d = date.split('-')[2] + "일"
+            date = y+m+d
+            # date = str(num) + ") : " + y+m+d
+            price = history.find('span', {'class': 'cor-blue'}).text.strip()
+            HistDamage[date] = price.replace(',', '')
+    else:  # 상대차 피해
+        pass
+
     try:
         hide_list = soup.find('ul', {'class': 'hide-list'}
                               ).find_all('span', {'class': 'txt'})
@@ -461,49 +470,30 @@ def get_history(url, temp):
 
 
 def start(url, num):
-
-    # for url in urls:
-    #     print(url)
+    time.sleep(2)
     print(url)
     temp = dict()
     try:
         temp = get_car_info(
             url, temp)
-        print('done car_info')
-    except:
-        print('error in car_info')
-        pass
-    try:
+
         temp.update(get_history(
             url, temp))
-        print('done car_history')
-    except:
-        print('error in history')
-        pass
-    try:
+
         temp['Options'] = get_options(
             url)
-        print('done options')
-    except:
-        print('error in options')
-        pass
-    try:
+
         temp = get_checkdata(url, temp)
-        print('done checkdata')
+        num[0] += 1
+        print(
+            "+++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++current", num[0])
+        if bool(temp):
+            with open('result_t.json', 'a', encoding='utf-8-sig') as outfile:
+                json.dump(temp, outfile, indent=4,
+                          ensure_ascii=False, sort_keys=True)
     except:
-        print('error in checkdata')
+        print('error!!!!')
         pass
-    # temp = get_car_info(url, temp)
-    # temp.update(get_history(url, temp))
-    # temp['Options'] = get_options(url)
-    # temp = get_checkdata(url, temp)
-    num[0] += 1
-    print(
-        "+++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++current", num[0])
-    if bool(temp):
-        with open('./result.json', 'a', encoding='utf-8-sig') as outfile:
-            json.dump(temp, outfile, indent=4,
-                      ensure_ascii=False, sort_keys=True)
 
 
 def crawl_iframe(url, temp):
@@ -769,19 +759,23 @@ def get_checkdata(url, temp):
             if soup.find('div', {'class': 'ch-car-name'}) == None:
                 temp['CHECK_INNER'] = "null"
                 temp['CHECK_OUTER'] = "null"
-                # print("None Data")
-                pass
+                temp['RegistrationID'] = "null"
+                temp['MotorType'] = 'null'
+                temp['WarrantyType'] = 'null'
+                temp['IssueDt'] = 'null'
             else:
                 # call iframe scraper
                 temp = crawl_iframe(url, temp)
 
         else:
-            # print("image")
             temp['CHECK_INNER'] = "null"
             temp['CHECK_OUTER'] = "null"
+            temp['RegistrationID'] = "null"
+            temp['MotorType'] = 'null'
+            temp['WarrantyType'] = 'null'
+            temp['IssueDt'] = 'null'
 
     return temp
-
 
 
 def get_dateform(date):
@@ -798,7 +792,36 @@ def get_dateform(date):
     result = str(y) + "년" + str(m) + "월" + str(d) + "일 " + str(time)
     return result
 
-    # test('https://www.kbchachacha.com/public/car/detail.kbc?carSeq=20831927')
+
+def process_json():
+
+    result = list()
+    with open('result_t.json', encoding='utf-8-sig', errors='ignore') as f:
+        str_data = f.read()
+    str_data = str(str_data)
+    str_data = str_data[:]
+    str_data = str_data.replace('{}', "")
+    str_data = str_data.replace('}{', "}///{")
+    str_datas = str_data.split('///')
+    str_datas = [x.replace("'", '"') for x in str_datas]
+    num = 0
+
+    for str_data in str_datas:
+        num += 1
+
+        try:
+            dict_data = literal_eval(str_data)
+            json_data = json.loads(str_data)
+            result.append(dict_data)
+        except:
+            print("Fail", num)
+    os.remove('result_t.json')
+    print("총 json에 차량 개수 ", len(result))
+    with open('result.json', 'a', encoding='utf-8-sig') as ff:
+        json.dump(result, ff, indent=4, ensure_ascii=False, sort_keys=True)
+
+
+# test('https://www.kbchachacha.com/public/car/detail.kbc?carSeq=20831927')
 if __name__ == '__main__':
 
     freeze_support()
@@ -821,3 +844,4 @@ if __name__ == '__main__':
     # ,urls_3,urls_4,urls_5,urls_6,urls_7,urls_8,urls_9,urls_10,urls_11,urls_12,urls_13,urls_14])
     pool.close()
     pool.join()
+    process_json()
