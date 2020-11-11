@@ -2,14 +2,15 @@ import os
 import sys
 from ast import literal_eval
 import json
-import multiprocessing
-from itertools import repeat
-from multiprocessing import Pool, freeze_support, Manager
 import requests
 from bs4 import BeautifulSoup as bs
-import numpy as np
 import requests
 import pandas as pd
+import paramiko
+from scp import SCPClient
+import time
+import random
+from fake_useragent import UserAgent
 
 
 def get_car_info(url, temp):
@@ -26,10 +27,12 @@ def get_car_info(url, temp):
         'Sec-Fetch-Site': 'none',
         'Sec-Fetch-User': '?1',
         'Upgrade-Insecure-Requests': '1',
-        'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/86.0.4240.75 Safari/537.36'
+        'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/86.0.4240.183 Safari/537.36'
     }
     response = requests.get(url, headers=headers)
     soup = bs(response.text, 'html.parser')
+    # if soup.find('h2') is None:
+    #     raise Exception("blocked")
     Cookie = response.cookies.get('cha-cid')
     Cookie = "cha-cid=" + Cookie + ";"
     carSeq = url[url.index('?carSeq=')+len('?carSeq='):]
@@ -50,7 +53,7 @@ def get_car_info(url, temp):
         'Sec-Fetch-Dest': 'empty',
         'Sec-Fetch-Mode': 'cors',
         'Sec-Fetch-Site': 'same-origin',
-        'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/86.0.4240.111 Safari/537.36',
+        'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/86.0.4240.183 Safari/537.36',
         'X-AJAX': 'true',
     }
     json_data = {
@@ -72,7 +75,6 @@ def get_car_info(url, temp):
         temp['Model'] = 'null'
         temp['Badge'] = 'null'
         temp['Grade'] = 'null'
-    # 차 정보
     car_price = soup.find(
         'div', {'class': 'car-buy-price'}).find('div').find('strong').text
     car_info1 = soup.find('dl', {'class': 'claerFix'}).find_all('dd')
@@ -83,17 +85,20 @@ def get_car_info(url, temp):
 
     car_year = car_info[1]
     car_year = car_year[car_year.index('(')+1:car_year.index(')')]
-
-    if soup.find('div', {'class': 'suc-price'}) is None:
-        if soup.find_all('div', {'class': 'car-buy-debt-m'})[1].find('div').text == '리스 이용 금융상담문의':
-            car_saletype = 'NORMAL_SALE'
-            SeparationLease = "False"
+    try:
+        if soup.find('div', {'class': 'suc-price'}) is None:
+            if soup.find_all('div', {'class': 'car-buy-debt-m'})[1].find('div').text == '리스 이용 금융상담문의':
+                car_saletype = 'NORMAL_SALE'
+                SeparationLease = "False"
+            else:
+                car_saletype = 'LEASE_SALE'
+                SeparationLease = "True"
         else:
             car_saletype = 'LEASE_SALE'
             SeparationLease = "True"
-    else:
-        car_saletype = 'LEASE_SALE'
-        SeparationLease = "True"
+    except:
+        car_saletype = 'null'
+        SeparationLease = "null"
     if soup.find('div', {'class': 'dealer-info-area'}).find('span', {'place-add'}).text == '개인판매자':
         SeparationDealer = 'False'
         SeparationIndividual = 'True'
@@ -213,11 +218,10 @@ def get_options(url):
         'Pragma': 'no-cache',
         'Sec-Fetch-Dest': 'iframe',
         'Sec-Fetch-Mode': 'navigate',
-        'Cookie': 'WMONID=DIsAC5YxLe8; FIRST_APPROCH=y; _ga=GA1.2.89915624.1602553615; cha-cid=30c7e5e5-abc7-41bd-8d7f-bf0db71fc3b2; C_PC_LOGIN_TAB=031100; TR10062602448_t_pa1=3.0.0.132622.null.null.null.52525333192658139; TR10062602448_t_pa2=3.0.0.132622.null.null.null.52525333192658139; car-keyword-code=1011212277324445%3A6; _gid=GA1.2.1217362369.1604476473; recent-visited-car=20633536; page-no-action-count=5; JSESSIONID=iW2ZmuL0VQaQIiFbL4CJ9XiAgxYPpTMsbq6SiXGWmbE3j061VblYAaMU8NrJAM8X.cGNoYWFwbzFfZG9tYWluL0NBUjNBUF9zZXJ2ZXIyX2Nz; _gac_UA-78571735-4=1.1604578759.CjwKCAiA4o79BRBvEiwAjteoYJvnkHPDcj3Ta3kbmks3YndGqrgyYVHE4DQP0PQ3HzAAKsqB9f5i-hoCnS4QAvD_BwE; _gat_UA-78571735-4=1; TR10062602448_t_uid=49545853018139668.1604578760316; TR10062602448_t_sst=49545577600001139.1604578760316; TR10062602448_t_if=15.0.0.0.null.null.null.0',
         'Sec-Fetch-Site': 'same-origin',
         'Sec-Fetch-User': '?1',
         'Upgrade-Insecure-Requests': '1',
-        'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/86.0.4240.75 Safari/537.36',
+        'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/86.0.4240.183 Safari/537.36'
     }
     jump = len('?carSeq=')
     result = dict()
@@ -316,13 +320,12 @@ def get_history(url, temp):
         'Host': 'www.kbchachacha.com',
         'Origin': 'https://www.kbchachacha.com',
         'Referer': url,
-        'Cookie': 'WMONID=DIsAC5YxLe8; FIRST_APPROCH=y; _ga=GA1.2.89915624.1602553615; cha-cid=30c7e5e5-abc7-41bd-8d7f-bf0db71fc3b2; C_PC_LOGIN_TAB=031100; TR10062602448_t_pa1=3.0.0.132622.null.null.null.52525333192658139; TR10062602448_t_pa2=3.0.0.132622.null.null.null.52525333192658139; car-keyword-code=1011212277324445%3A6; _gid=GA1.2.1217362369.1604476473; recent-visited-car=20633536; page-no-action-count=5; JSESSIONID=iW2ZmuL0VQaQIiFbL4CJ9XiAgxYPpTMsbq6SiXGWmbE3j061VblYAaMU8NrJAM8X.cGNoYWFwbzFfZG9tYWluL0NBUjNBUF9zZXJ2ZXIyX2Nz; _gac_UA-78571735-4=1.1604578759.CjwKCAiA4o79BRBvEiwAjteoYJvnkHPDcj3Ta3kbmks3YndGqrgyYVHE4DQP0PQ3HzAAKsqB9f5i-hoCnS4QAvD_BwE; _gat_UA-78571735-4=1; TR10062602448_t_uid=49545853018139668.1604578760316; TR10062602448_t_sst=49545577600001139.1604578760316; TR10062602448_t_if=15.0.0.0.null.null.null.0',
         'Sec-Fetch-Dest': 'iframe',
         'Sec-Fetch-Mode': 'navigate',
         'Sec-Fetch-Site': 'same-origin',
         'Sec-Fetch-User': '?1',
         'Upgrade-Insecure-Requests': '1',
-        'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/86.0.4240.75 Safari/537.36',
+        'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/86.0.4240.183 Safari/537.36'
     }
     datas = {
         'layerId': 'layerCarHistoryInfo',
@@ -377,8 +380,8 @@ def get_history(url, temp):
             y = date.split('-')[0] + "년"
             m = date.split('-')[1] + "월"
             d = date.split('-')[2] + "일"
-            date = y+m+d
-            # date = str(num) + ") : " + y+m+d
+            # date = y+m+d
+            date = str(num) + ") : " + y+m+d
             price = history.find('span', {'class': 'cor-blue'}).text.strip()
             HistDamage[date] = price.replace(',', '')
     else:  # 상대차 피해
@@ -425,51 +428,46 @@ def get_history(url, temp):
     temp['HistOwner'] = 'null'
     return temp
 
-    # main
-
 
 def start(urls, server_num):
     num = 0
+    time.sleep(random.randint(1, 3))
     for url in urls:
+
         temp = dict()
+        # try:
+        #     temp = get_car_info(
+        #         url, temp)
+        # except:
+        #     print("error in car info")
+        # try:
+        #     temp.update(get_history(
+        #         url, temp))
+        # except:
+        #     print("error in car history")
+        # try:
+        #     temp['Options'] = get_options(
+        #         url)
+        # except:
+        #     print("error in car options")
+        # try:
+        #     temp = get_checkdata(url, temp)
+        # except:
+        #     print("error in car checkdata")
         try:
-            temp = get_car_info(
-                url, temp)
-
-        except:
-            print('error in car_info')
-            pass
-        try:
-            temp.update(get_history(
-                url, temp))
-
-        except:
-            print('error in history')
-            pass
-        try:
-            temp['Options'] = get_options(
-                url)
-
-        except:
-            print('error in options')
-            pass
-        try:
+            temp = get_car_info(url, temp)
+            temp.update(get_history(url, temp))
+            temp['Options'] = get_options(url)
             temp = get_checkdata(url, temp)
+            num += 1
 
-        except:
-            print('error in checkdata')
-            pass
-        # temp = get_car_info(url, temp)
-        # temp.update(get_history(url, temp))
-        # temp['Options'] = get_options(url)
-        # temp = get_checkdata(url, temp)
-        num += 1
-
-        print("현재 : ", num)
-        if bool(temp):
-            with open('result{server_num}_t.json'.format(server_num=server_num), 'a', encoding='utf-8-sig') as outfile:
-                json.dump(temp, outfile, indent=4,
-                          ensure_ascii=False, sort_keys=True)
+            print("현재 : ", num)
+            if bool(temp):
+                with open('result{server_num}_t.json'.format(server_num=server_num), 'a', encoding='utf-8-sig') as outfile:
+                    json.dump(temp, outfile, indent=4,
+                              ensure_ascii=False, sort_keys=True)
+        except Exception as e:
+            print(f"error : {e}")
 
 
 def crawl_iframe(url, temp):
@@ -705,13 +703,13 @@ def get_checkdata(url, temp):
         'Sec-Fetch-Dest': 'document',
         'Sec-Fetch-Mode': 'navigate',
         'Sec-Fetch-Site': 'none',
-        'Cookie': 'WMONID=DIsAC5YxLe8; FIRST_APPROCH=y; _ga=GA1.2.89915624.1602553615; cha-cid=30c7e5e5-abc7-41bd-8d7f-bf0db71fc3b2; C_PC_LOGIN_TAB=031100; TR10062602448_t_pa1=3.0.0.132622.null.null.null.52525333192658139; TR10062602448_t_pa2=3.0.0.132622.null.null.null.52525333192658139; car-keyword-code=1011212277324445%3A6; _gid=GA1.2.1217362369.1604476473; recent-visited-car=20633536; page-no-action-count=5; JSESSIONID=iW2ZmuL0VQaQIiFbL4CJ9XiAgxYPpTMsbq6SiXGWmbE3j061VblYAaMU8NrJAM8X.cGNoYWFwbzFfZG9tYWluL0NBUjNBUF9zZXJ2ZXIyX2Nz; _gac_UA-78571735-4=1.1604578759.CjwKCAiA4o79BRBvEiwAjteoYJvnkHPDcj3Ta3kbmks3YndGqrgyYVHE4DQP0PQ3HzAAKsqB9f5i-hoCnS4QAvD_BwE; _gat_UA-78571735-4=1; TR10062602448_t_uid=49545853018139668.1604578760316; TR10062602448_t_sst=49545577600001139.1604578760316; TR10062602448_t_if=15.0.0.0.null.null.null.0',
         'Sec-Fetch-User': '?1',
         'Upgrade-Insecure-Requests': '1',
-        'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/86.0.4240.75 Safari/537.36'
+        'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/86.0.4240.183 Safari/537.36'
     }
     res = requests.get(
         url, headers=headers)
+
     soup = bs(res.text, 'html.parser')
     chk_tag_url = soup.find('li', {'class': 'used01'}).find('a')[
         'data-link-url']
@@ -798,18 +796,47 @@ def process_json(server_num):
         json.dump(result, ff, indent=4, ensure_ascii=False, sort_keys=True)
 
 
-with open('C:/Users/koc08/바탕 화면/Crawling Car Info/Crawling/to_server/argu.txt', 'r') as f:
-    server_num = f.read()
-num_per_url = 3
-num = 0
-# df = pd.read_csv('filtered_url.csv')
-# car_urls = list(df['url'].values)
-# car_urls = car_urls[num_per_url*(server_num-1):num_per_url*server_num]
-car_urls = ['https://www.kbchachacha.com/public/car/detail.kbc?carSeq=20752233',
-            'https://www.kbchachacha.com/public/car/detail.kbc?carSeq=11172082',
-            'https://www.kbchachacha.com/public/car/detail.kbc?carSeq=20867234',
-            'https://www.kbchachacha.com/public/car/detail.kbc?carSeq=20867414',
-            'https://www.kbchachacha.com/public/car/detail.kbc?carSeq=20899388']
+class Uploader:
+
+    def __init__(self, resultFileName):
+        self.localPath = '/home/centos/'
+        self.resultFileName = resultFileName
+        self.remotePath = '/home/centos/result_from_servers/'
+        self.main()
+
+    def main(self):
+        ssh = self.createSSHClient()
+        scp = SCPClient(ssh.get_transport())
+        scp.put(self.localPath+self.resultFileName,
+                self.remotePath+self.resultFileName)
+
+    def createSSHClient(self):
+        host = '133.186.211.78'  # IP
+        username = 'centos'  # username
+        password = 'gozjRjwu~!'  # password (root)
+        port = 22
+        client = paramiko.SSHClient()
+        client.load_system_host_keys()
+        client.set_missing_host_key_policy(paramiko.AutoAddPolicy())
+        client.connect(host, port, username, password,
+                       key_filename='/home/centos/shopify.pem')  # public-key
+        return client
+
+
+#########################main#################################
+# with open('argu.txt', 'r') as f:
+#     server_num = f.read()
+server_num = sys.argv[1]
+
+num_per_url = 2700
+
+df = pd.read_csv('filtered_url.csv')
+car_urls = list(df['url'].values)
+server_num = int(server_num)
+car_urls = car_urls[num_per_url*(server_num-1):num_per_url*server_num]
+
 print(len(car_urls))
 start(car_urls, server_num)
-process_json(server_num)
+Uploader(
+    '/home/centos/daily_crawling/result{server_num}_t.json'.format(server_num=server_num))
+# process_json(server_num)

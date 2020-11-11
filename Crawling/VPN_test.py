@@ -1,55 +1,13 @@
-
-import numpy as np
-from multiprocessing import Pool, freeze_support, Manager
-from itertools import repeat
-import multiprocessing
+import os
+import sys
+from ast import literal_eval
+import json
 import requests
 from bs4 import BeautifulSoup as bs
+import requests
 import pandas as pd
-import json
-from urllib.request import urlopen
-
-
-def get_page_url(page_num, user_code):
-    url = 'https://www.kbchachacha.com/public/search/list.empty?page=' + \
-        str(page_num) + '&sort=-orderDate&useCode=' + \
-        str(user_code) + '&_pageSize=3&pageSize=4'
-    return url
-
-
-def get_car_urls():
-
-    car_url_list = list()
-    user_codes = ['002001', '002002', '002003', '002004', '002005', '002006',
-                  '002007', '002008', '002009', '002010', '002011', '002012', '002013']
-    for user_code in user_codes:
-        page_num = 0
-        while(True):
-            page_num += 1
-            url = get_page_url(page_num, user_code)
-            print(url)
-            response = requests.get(url)
-            soup = bs(response.text, "html.parser")
-            print(page_num)
-            #######종료 조건 ###############
-            if page_num == 3:
-                break
-            # if soup.find('span', {'class': 'txt'}) is not None:
-            #     print('종료')
-            #     break
-
-            items = soup.find_all('a')
-            for item in items:
-                if 'detail.kbc?carSeq' in item['href']:
-                    item_href = item['href']
-                    if 'https://' in item_href:
-                        car_url_list.append(item_href)
-                    else:
-                        car_url_list.append(
-                            'https://www.kbchachacha.com' + item_href)
-
-    car_url_list = list(set(car_url_list))
-    return car_url_list
+import time
+import random
 
 
 def get_car_info(url, temp):
@@ -66,10 +24,12 @@ def get_car_info(url, temp):
         'Sec-Fetch-Site': 'none',
         'Sec-Fetch-User': '?1',
         'Upgrade-Insecure-Requests': '1',
-        'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/86.0.4240.75 Safari/537.36'
+        'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/86.0.4240.183 Safari/537.36'
     }
     response = requests.get(url, headers=headers)
     soup = bs(response.text, 'html.parser')
+    # if soup.find('h2') is None:
+    #     raise Exception("blocked")
     Cookie = response.cookies.get('cha-cid')
     Cookie = "cha-cid=" + Cookie + ";"
     carSeq = url[url.index('?carSeq=')+len('?carSeq='):]
@@ -90,7 +50,7 @@ def get_car_info(url, temp):
         'Sec-Fetch-Dest': 'empty',
         'Sec-Fetch-Mode': 'cors',
         'Sec-Fetch-Site': 'same-origin',
-        'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/86.0.4240.111 Safari/537.36',
+        'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/86.0.4240.183 Safari/537.36',
         'X-AJAX': 'true',
     }
     json_data = {
@@ -112,7 +72,6 @@ def get_car_info(url, temp):
         temp['Model'] = 'null'
         temp['Badge'] = 'null'
         temp['Grade'] = 'null'
-    # 차 정보
     car_price = soup.find(
         'div', {'class': 'car-buy-price'}).find('div').find('strong').text
     car_info1 = soup.find('dl', {'class': 'claerFix'}).find_all('dd')
@@ -123,17 +82,20 @@ def get_car_info(url, temp):
 
     car_year = car_info[1]
     car_year = car_year[car_year.index('(')+1:car_year.index(')')]
-
-    if soup.find('div', {'class': 'suc-price'}) is None:
-        if soup.find_all('div', {'class': 'car-buy-debt-m'})[1].find('div').text == '리스 이용 금융상담문의':
-            car_saletype = 'NORMAL_SALE'
-            SeparationLease = "False"
+    try:
+        if soup.find('div', {'class': 'suc-price'}) is None:
+            if soup.find_all('div', {'class': 'car-buy-debt-m'})[1].find('div').text == '리스 이용 금융상담문의':
+                car_saletype = 'NORMAL_SALE'
+                SeparationLease = "False"
+            else:
+                car_saletype = 'LEASE_SALE'
+                SeparationLease = "True"
         else:
             car_saletype = 'LEASE_SALE'
             SeparationLease = "True"
-    else:
-        car_saletype = 'LEASE_SALE'
-        SeparationLease = "True"
+    except:
+        car_saletype = 'null'
+        SeparationLease = "null"
     if soup.find('div', {'class': 'dealer-info-area'}).find('span', {'place-add'}).text == '개인판매자':
         SeparationDealer = 'False'
         SeparationIndividual = 'True'
@@ -256,7 +218,7 @@ def get_options(url):
         'Sec-Fetch-Site': 'same-origin',
         'Sec-Fetch-User': '?1',
         'Upgrade-Insecure-Requests': '1',
-        'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/86.0.4240.75 Safari/537.36',
+        'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/86.0.4240.183 Safari/537.36'
     }
     jump = len('?carSeq=')
     result = dict()
@@ -360,7 +322,7 @@ def get_history(url, temp):
         'Sec-Fetch-Site': 'same-origin',
         'Sec-Fetch-User': '?1',
         'Upgrade-Insecure-Requests': '1',
-        'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/86.0.4240.75 Safari/537.36',
+        'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/86.0.4240.183 Safari/537.36'
     }
     datas = {
         'layerId': 'layerCarHistoryInfo',
@@ -381,9 +343,11 @@ def get_history(url, temp):
         registeredDate = 'null'
     noRegisterPeriod = soup.find('div', {'class', 'box-line'})
     if noRegisterPeriod.find('div', {'class', 'date'}) is None:
-        noRegisterPeriod = "None"
+        noRegisterPeriod = "none"
     else:
-        noRegisterPeriod = noRegisterPeriod.find('div', {'class', 'date'}).text
+        noRegisterPeriod = noRegisterPeriod.find_all('div', {'class', 'date'})
+        noRegisterPeriod = [x.text for x in noRegisterPeriod]
+
     historys = soup.find_all(
         'div', {'class': 'cmm-table table-l02 ct-line td-ptb-15'})
     HistDamage = dict()
@@ -407,13 +371,19 @@ def get_history(url, temp):
         def __lt__(self, other):
             return self.num < other.num
     for num, history in enumerate(historys):
-        date = history.find('th').text.strip()
-        y = date.split('-')[0] + "년"
-        m = date.split('-')[1] + "월"
-        d = date.split('-')[2] + "일"
-        date = str(num) + ") : " + y+m+d
-        price = history.find('span', {'class': 'cor-blue'}).text.strip()
-        HistDamage[date] = price.replace(',', '')
+        # 내차 피해
+        if history.find('tbody').find('tr').find_all('td')[1].text.strip() == '-':
+            date = history.find('th').text.strip()
+            y = date.split('-')[0] + "년"
+            m = date.split('-')[1] + "월"
+            d = date.split('-')[2] + "일"
+            # date = y+m+d
+            date = str(num) + ") : " + y+m+d
+            price = history.find('span', {'class': 'cor-blue'}).text.strip()
+            HistDamage[date] = price.replace(',', '')
+    else:  # 상대차 피해
+        pass
+
     try:
         hide_list = soup.find('ul', {'class': 'hide-list'}
                               ).find_all('span', {'class': 'txt'})
@@ -455,51 +425,46 @@ def get_history(url, temp):
     temp['HistOwner'] = 'null'
     return temp
 
-    # main
 
+def start(urls, server_num):
+    num = 0
+    # time.sleep(random.randint(1, 3))
+    for url in urls:
 
-def start(url):
+        temp = dict()
+        # try:
+        #     temp = get_car_info(
+        #         url, temp)
+        # except:
+        #     print("error in car info")
+        # try:
+        #     temp.update(get_history(
+        #         url, temp))
+        # except:
+        #     print("error in car history")
+        # try:
+        #     temp['Options'] = get_options(
+        #         url)
+        # except:
+        #     print("error in car options")
+        # try:
+        #     temp = get_checkdata(url, temp)
+        # except:
+        #     print("error in car checkdata")
+        try:
+            temp = get_car_info(url, temp)
+            temp.update(get_history(url, temp))
+            temp['Options'] = get_options(url)
+            temp = get_checkdata(url, temp)
+            num += 1
 
-    # for url in urls:
-    #     print(url)
-    print(url)
-    temp = dict()
-    try:
-        temp = get_car_info(
-            url, temp)
-        print('done car_info')
-    except:
-        print('error in car_info')
-        pass
-    try:
-        temp.update(get_history(
-            url, temp))
-        print('done car_history')
-    except:
-        print('error in history')
-        pass
-    try:
-        temp['Options'] = get_options(
-            url)
-        print('done options')
-    except:
-        print('error in options')
-        pass
-    try:
-        temp = get_checkdata(url, temp)
-        print('done checkdata')
-    except:
-        print('error in checkdata')
-        pass
-    # temp = get_car_info(url, temp)
-    # temp.update(get_history(url, temp))
-    # temp['Options'] = get_options(url)
-    # temp = get_checkdata(url, temp)
-    if bool(temp):
-        with open('./result.json', 'a', encoding='utf-8') as outfile:
-            json.dump(temp, outfile, indent=4,
-                      ensure_ascii=False, sort_keys=True)
-            json.dump(',', outfile)
+            print("현재 : ", num)
+            if bool(temp):
+                with open('result{server_num}_t.json'.format(server_num=server_num), 'a', encoding='utf-8-sig') as outfile:
+                    json.dump(temp, outfile, indent=4,
+                              ensure_ascii=False, sort_keys=True)
+        except Exception as e:
+            print(f"error : {e}")
 
 
 def crawl_iframe(url, temp):
@@ -737,10 +702,11 @@ def get_checkdata(url, temp):
         'Sec-Fetch-Site': 'none',
         'Sec-Fetch-User': '?1',
         'Upgrade-Insecure-Requests': '1',
-        'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/86.0.4240.75 Safari/537.36'
+        'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/86.0.4240.183 Safari/537.36'
     }
     res = requests.get(
         url, headers=headers)
+
     soup = bs(res.text, 'html.parser')
     chk_tag_url = soup.find('li', {'class': 'used01'}).find('a')[
         'data-link-url']
@@ -764,49 +730,23 @@ def get_checkdata(url, temp):
             if soup.find('div', {'class': 'ch-car-name'}) == None:
                 temp['CHECK_INNER'] = "null"
                 temp['CHECK_OUTER'] = "null"
-                # print("None Data")
-                pass
+                temp['RegistrationID'] = "null"
+                temp['MotorType'] = 'null'
+                temp['WarrantyType'] = 'null'
+                temp['IssueDt'] = 'null'
             else:
                 # call iframe scraper
                 temp = crawl_iframe(url, temp)
 
         else:
-            # print("image")
             temp['CHECK_INNER'] = "null"
             temp['CHECK_OUTER'] = "null"
+            temp['RegistrationID'] = "null"
+            temp['MotorType'] = 'null'
+            temp['WarrantyType'] = 'null'
+            temp['IssueDt'] = 'null'
 
     return temp
-
-
-def test(url):
-    result = list()
-    car_urls = [url]
-
-    num = 0
-    for url in car_urls:
-        print(url)
-        num += 1
-        print(len(car_urls), "중에", num)
-        temp = dict()
-
-        temp = get_car_info(
-            url, temp)
-
-        temp.update(get_history(
-            url, temp))
-
-        temp['Options'] = get_options(
-            url)
-
-        temp = get_checkdata(url, temp)
-
-        result.append(temp)
-
-    with open('./result.json', 'a', encoding='utf-8-sig') as outfile:
-        json.dump(result, outfile, indent=4,
-                  ensure_ascii=False, sort_keys=True)
-
-    print("완-----료")
 
 
 def get_dateform(date):
@@ -824,23 +764,48 @@ def get_dateform(date):
     return result
 
 
-    # test('https://www.kbchachacha.com/public/car/detail.kbc?carSeq=20831927')
-if __name__ == '__main__':
+def process_json(server_num):
 
-    freeze_support()
+    result = list()
+    with open('result{server_num}_t.json'.format(server_num=server_num), encoding='utf-8-sig', errors='ignore') as f:
+        str_data = f.read()
+    str_data = str(str_data)
+    str_data = str_data[:]
+    str_data = str_data.replace('{}', "")
+    str_data = str_data.replace('}{', "}///{")
+    str_datas = str_data.split('///')
+    str_datas = [x.replace("'", '"') for x in str_datas]
+    num = 0
 
-    df = pd.read_csv('filtered_url.csv')
-    car_urls = list(df['url'].values)
-    # car_urls = car_urls[:100]
-    num_cores = multiprocessing.cpu_count()
-    # https://dailyheumsi.tistory.com/105
-    pool = Pool(processes=6)
-    # pool = Pool()
-    # splited_data = np.array_split(car_urls, num_cores)
-    # splited_data = list(splited_data)
-    # print(splited_data)
-    pool.map(start, car_urls)
-    # pool.starmap(start, [zip(urls_1), zip(urls_2)])
-    # ,urls_3,urls_4,urls_5,urls_6,urls_7,urls_8,urls_9,urls_10,urls_11,urls_12,urls_13,urls_14])
-    pool.close()
-    pool.join()
+    for str_data in str_datas:
+        num += 1
+
+        try:
+            dict_data = literal_eval(str_data)
+            json_data = json.loads(str_data)
+            result.append(dict_data)
+        except:
+            print("Fail", num)
+
+    print("총 json에 차량 개수 ", len(result))
+    os.remove('result{server_num}_t.json'.format(server_num=server_num))
+    with open('result{server_num}.json'.format(server_num=server_num), 'w', encoding='utf-8-sig') as ff:
+        json.dump(result, ff, indent=4, ensure_ascii=False, sort_keys=True)
+
+#########################main#################################
+# with open('argu.txt', 'r') as f:
+#     server_num = f.read()
+# server_num = sys.argv[1]
+
+
+# num_per_url = 2700
+server_num = 1
+df = pd.read_csv('C:/Users/jlee/Desktop/아름드리/filtered_url_2.csv')
+car_urls = list(df['url'].values)
+server_num = int(server_num)
+
+
+print(len(car_urls))
+start(car_urls, server_num)
+
+# process_json(server_num)

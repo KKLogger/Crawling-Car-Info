@@ -60,7 +60,7 @@ def get_car_info(url, temp):
         'Sec-Fetch-Site': 'none',
         'Sec-Fetch-User': '?1',
         'Upgrade-Insecure-Requests': '1',
-        'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/86.0.4240.75 Safari/537.36'
+        'User-Agent': UserAgent().random
     }
     response = requests.get(url, headers=headers)
     soup = bs(response.text, 'html.parser')
@@ -84,7 +84,7 @@ def get_car_info(url, temp):
         'Sec-Fetch-Dest': 'empty',
         'Sec-Fetch-Mode': 'cors',
         'Sec-Fetch-Site': 'same-origin',
-        'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/86.0.4240.111 Safari/537.36',
+        'User-Agent': UserAgent().random,
         'X-AJAX': 'true',
     }
     json_data = {
@@ -250,7 +250,7 @@ def get_options(url):
         'Sec-Fetch-Site': 'same-origin',
         'Sec-Fetch-User': '?1',
         'Upgrade-Insecure-Requests': '1',
-        'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/86.0.4240.75 Safari/537.36',
+        'User-Agent': UserAgent().random
     }
     jump = len('?carSeq=')
     result = dict()
@@ -354,7 +354,7 @@ def get_history(url, temp):
         'Sec-Fetch-Site': 'same-origin',
         'Sec-Fetch-User': '?1',
         'Upgrade-Insecure-Requests': '1',
-        'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/86.0.4240.75 Safari/537.36',
+        'User-Agent': UserAgent().random
     }
     datas = {
         'layerId': 'layerCarHistoryInfo',
@@ -409,8 +409,8 @@ def get_history(url, temp):
             y = date.split('-')[0] + "년"
             m = date.split('-')[1] + "월"
             d = date.split('-')[2] + "일"
-            date = y+m+d
-            # date = str(num) + ") : " + y+m+d
+            # date = y+m+d
+            date = str(num) + ") : " + y+m+d
             price = history.find('span', {'class': 'cor-blue'}).text.strip()
             HistDamage[date] = price.replace(',', '')
     else:  # 상대차 피해
@@ -743,7 +743,7 @@ def get_checkdata(url, temp):
         'Sec-Fetch-Site': 'none',
         'Sec-Fetch-User': '?1',
         'Upgrade-Insecure-Requests': '1',
-        'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/86.0.4240.75 Safari/537.36'
+        'User-Agent': UserAgent().random
     }
     res = requests.get(
         url, headers=headers)

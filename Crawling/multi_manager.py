@@ -12,48 +12,6 @@ import json
 from urllib.request import urlopen
 
 
-def get_page_url(page_num, user_code):
-    url = 'https://www.kbchachacha.com/public/search/list.empty?page=' + \
-        str(page_num) + '&sort=-orderDate&useCode=' + \
-        str(user_code) + '&_pageSize=3&pageSize=4'
-    return url
-
-
-def get_car_urls():
-
-    car_url_list = list()
-    user_codes = ['002001', '002002', '002003', '002004', '002005', '002006',
-                  '002007', '002008', '002009', '002010', '002011', '002012', '002013']
-    for user_code in user_codes:
-        page_num = 0
-        while(True):
-            page_num += 1
-            url = get_page_url(page_num, user_code)
-            print(url)
-            response = requests.get(url)
-            soup = bs(response.text, "html.parser")
-            print(page_num)
-            ########종료 조건 ###############
-            # if page_num == 3:
-            #     break
-            if soup.find('span', {'class': 'txt'}) is not None:
-                print('종료')
-                break
-
-            items = soup.find_all('a')
-            for item in items:
-                if 'detail.kbc?carSeq' in item['href']:
-                    item_href = item['href']
-                    if 'https://' in item_href:
-                        car_url_list.append(item_href)
-                    else:
-                        car_url_list.append(
-                            'https://www.kbchachacha.com' + item_href)
-
-    car_url_list = list(set(car_url_list))
-    return car_url_list
-
-
 def get_car_info(url, temp):
     headers = {
         'Accept': 'text/html,application/xhtml+xml,application/xml;q=0.9,image/avif,image/webp,image/apng,*/*;q=0.8,application/signed-exchange;v=b3;q=0.9',
@@ -68,10 +26,12 @@ def get_car_info(url, temp):
         'Sec-Fetch-Site': 'none',
         'Sec-Fetch-User': '?1',
         'Upgrade-Insecure-Requests': '1',
-        'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/86.0.4240.75 Safari/537.36'
+        'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/86.0.4240.183 Safari/537.36'
     }
     response = requests.get(url, headers=headers)
     soup = bs(response.text, 'html.parser')
+    # if soup.find('h2') is None:
+    #     raise Exception("blocked")
     Cookie = response.cookies.get('cha-cid')
     Cookie = "cha-cid=" + Cookie + ";"
     carSeq = url[url.index('?carSeq=')+len('?carSeq='):]
@@ -92,7 +52,7 @@ def get_car_info(url, temp):
         'Sec-Fetch-Dest': 'empty',
         'Sec-Fetch-Mode': 'cors',
         'Sec-Fetch-Site': 'same-origin',
-        'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/86.0.4240.111 Safari/537.36',
+        'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/86.0.4240.183 Safari/537.36',
         'X-AJAX': 'true',
     }
     json_data = {
@@ -114,7 +74,6 @@ def get_car_info(url, temp):
         temp['Model'] = 'null'
         temp['Badge'] = 'null'
         temp['Grade'] = 'null'
-    # 차 정보
     car_price = soup.find(
         'div', {'class': 'car-buy-price'}).find('div').find('strong').text
     car_info1 = soup.find('dl', {'class': 'claerFix'}).find_all('dd')
@@ -125,17 +84,20 @@ def get_car_info(url, temp):
 
     car_year = car_info[1]
     car_year = car_year[car_year.index('(')+1:car_year.index(')')]
-
-    if soup.find('div', {'class': 'suc-price'}) is None:
-        if soup.find_all('div', {'class': 'car-buy-debt-m'})[1].find('div').text == '리스 이용 금융상담문의':
-            car_saletype = 'NORMAL_SALE'
-            SeparationLease = "False"
+    try:
+        if soup.find('div', {'class': 'suc-price'}) is None:
+            if soup.find_all('div', {'class': 'car-buy-debt-m'})[1].find('div').text == '리스 이용 금융상담문의':
+                car_saletype = 'NORMAL_SALE'
+                SeparationLease = "False"
+            else:
+                car_saletype = 'LEASE_SALE'
+                SeparationLease = "True"
         else:
             car_saletype = 'LEASE_SALE'
             SeparationLease = "True"
-    else:
-        car_saletype = 'LEASE_SALE'
-        SeparationLease = "True"
+    except:
+        car_saletype = 'null'
+        SeparationLease = "null"
     if soup.find('div', {'class': 'dealer-info-area'}).find('span', {'place-add'}).text == '개인판매자':
         SeparationDealer = 'False'
         SeparationIndividual = 'True'
@@ -255,11 +217,10 @@ def get_options(url):
         'Pragma': 'no-cache',
         'Sec-Fetch-Dest': 'iframe',
         'Sec-Fetch-Mode': 'navigate',
-        'Cookie': 'WMONID=DIsAC5YxLe8; FIRST_APPROCH=y; _ga=GA1.2.89915624.1602553615; cha-cid=30c7e5e5-abc7-41bd-8d7f-bf0db71fc3b2; C_PC_LOGIN_TAB=031100; TR10062602448_t_pa1=3.0.0.132622.null.null.null.52525333192658139; TR10062602448_t_pa2=3.0.0.132622.null.null.null.52525333192658139; car-keyword-code=1011212277324445%3A6; _gid=GA1.2.1217362369.1604476473; recent-visited-car=20633536; page-no-action-count=5; JSESSIONID=iW2ZmuL0VQaQIiFbL4CJ9XiAgxYPpTMsbq6SiXGWmbE3j061VblYAaMU8NrJAM8X.cGNoYWFwbzFfZG9tYWluL0NBUjNBUF9zZXJ2ZXIyX2Nz; _gac_UA-78571735-4=1.1604578759.CjwKCAiA4o79BRBvEiwAjteoYJvnkHPDcj3Ta3kbmks3YndGqrgyYVHE4DQP0PQ3HzAAKsqB9f5i-hoCnS4QAvD_BwE; _gat_UA-78571735-4=1; TR10062602448_t_uid=49545853018139668.1604578760316; TR10062602448_t_sst=49545577600001139.1604578760316; TR10062602448_t_if=15.0.0.0.null.null.null.0',
         'Sec-Fetch-Site': 'same-origin',
         'Sec-Fetch-User': '?1',
         'Upgrade-Insecure-Requests': '1',
-        'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/86.0.4240.75 Safari/537.36',
+        'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/86.0.4240.183 Safari/537.36'
     }
     jump = len('?carSeq=')
     result = dict()
@@ -358,13 +319,12 @@ def get_history(url, temp):
         'Host': 'www.kbchachacha.com',
         'Origin': 'https://www.kbchachacha.com',
         'Referer': url,
-        'Cookie': 'WMONID=DIsAC5YxLe8; FIRST_APPROCH=y; _ga=GA1.2.89915624.1602553615; cha-cid=30c7e5e5-abc7-41bd-8d7f-bf0db71fc3b2; C_PC_LOGIN_TAB=031100; TR10062602448_t_pa1=3.0.0.132622.null.null.null.52525333192658139; TR10062602448_t_pa2=3.0.0.132622.null.null.null.52525333192658139; car-keyword-code=1011212277324445%3A6; _gid=GA1.2.1217362369.1604476473; recent-visited-car=20633536; page-no-action-count=5; JSESSIONID=iW2ZmuL0VQaQIiFbL4CJ9XiAgxYPpTMsbq6SiXGWmbE3j061VblYAaMU8NrJAM8X.cGNoYWFwbzFfZG9tYWluL0NBUjNBUF9zZXJ2ZXIyX2Nz; _gac_UA-78571735-4=1.1604578759.CjwKCAiA4o79BRBvEiwAjteoYJvnkHPDcj3Ta3kbmks3YndGqrgyYVHE4DQP0PQ3HzAAKsqB9f5i-hoCnS4QAvD_BwE; _gat_UA-78571735-4=1; TR10062602448_t_uid=49545853018139668.1604578760316; TR10062602448_t_sst=49545577600001139.1604578760316; TR10062602448_t_if=15.0.0.0.null.null.null.0',
         'Sec-Fetch-Dest': 'iframe',
         'Sec-Fetch-Mode': 'navigate',
         'Sec-Fetch-Site': 'same-origin',
         'Sec-Fetch-User': '?1',
         'Upgrade-Insecure-Requests': '1',
-        'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/86.0.4240.75 Safari/537.36',
+        'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/86.0.4240.183 Safari/537.36'
     }
     datas = {
         'layerId': 'layerCarHistoryInfo',
@@ -388,7 +348,8 @@ def get_history(url, temp):
         noRegisterPeriod = "none"
     else:
         noRegisterPeriod = noRegisterPeriod.find_all('div', {'class', 'date'})
-        noRegisterPeriod = [x.text.replace(' ', '') for x in noRegisterPeriod]
+        noRegisterPeriod = [x.text for x in noRegisterPeriod]
+
     historys = soup.find_all(
         'div', {'class': 'cmm-table table-l02 ct-line td-ptb-15'})
     HistDamage = dict()
@@ -418,8 +379,8 @@ def get_history(url, temp):
             y = date.split('-')[0] + "년"
             m = date.split('-')[1] + "월"
             d = date.split('-')[2] + "일"
-            date = y+m+d
-            # date = str(num) + ") : " + y+m+d
+            # date = y+m+d
+            date = str(num) + ") : " + y+m+d
             price = history.find('span', {'class': 'cor-blue'}).text.strip()
             HistDamage[date] = price.replace(',', '')
     else:  # 상대차 피해
@@ -466,34 +427,44 @@ def get_history(url, temp):
     temp['HistOwner'] = 'null'
     return temp
 
-    # main
-
 
 def start(url, num):
-    time.sleep(2)
-    print(url)
+    # time.sleep(random.randint(1, 3)
+
     temp = dict()
+    # try:
+    #     temp = get_car_info(
+    #         url, temp)
+    # except:
+    #     print("error in car info")
+    # try:
+    #     temp.update(get_history(
+    #         url, temp))
+    # except:
+    #     print("error in car history")
+    # try:
+    #     temp['Options'] = get_options(
+    #         url)
+    # except:
+    #     print("error in car options")
+    # try:
+    #     temp = get_checkdata(url, temp)
+    # except:
+    #     print("error in car checkdata")
     try:
-        temp = get_car_info(
-            url, temp)
-
-        temp.update(get_history(
-            url, temp))
-
-        temp['Options'] = get_options(
-            url)
-
+        temp = get_car_info(url, temp)
+        temp.update(get_history(url, temp))
+        temp['Options'] = get_options(url)
         temp = get_checkdata(url, temp)
-        num[0] += 1
-        print(
-            "+++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++current", num[0])
+        num[0] = num[0] + 1
+
+        print("현재 : ", num[0])
         if bool(temp):
             with open('result_t.json', 'a', encoding='utf-8-sig') as outfile:
                 json.dump(temp, outfile, indent=4,
                           ensure_ascii=False, sort_keys=True)
-    except:
-        print('error!!!!')
-        pass
+    except Exception as e:
+        print(f"error : {e}")
 
 
 def crawl_iframe(url, temp):
@@ -729,13 +700,13 @@ def get_checkdata(url, temp):
         'Sec-Fetch-Dest': 'document',
         'Sec-Fetch-Mode': 'navigate',
         'Sec-Fetch-Site': 'none',
-        'Cookie': 'WMONID=DIsAC5YxLe8; FIRST_APPROCH=y; _ga=GA1.2.89915624.1602553615; cha-cid=30c7e5e5-abc7-41bd-8d7f-bf0db71fc3b2; C_PC_LOGIN_TAB=031100; TR10062602448_t_pa1=3.0.0.132622.null.null.null.52525333192658139; TR10062602448_t_pa2=3.0.0.132622.null.null.null.52525333192658139; car-keyword-code=1011212277324445%3A6; _gid=GA1.2.1217362369.1604476473; recent-visited-car=20633536; page-no-action-count=5; JSESSIONID=iW2ZmuL0VQaQIiFbL4CJ9XiAgxYPpTMsbq6SiXGWmbE3j061VblYAaMU8NrJAM8X.cGNoYWFwbzFfZG9tYWluL0NBUjNBUF9zZXJ2ZXIyX2Nz; _gac_UA-78571735-4=1.1604578759.CjwKCAiA4o79BRBvEiwAjteoYJvnkHPDcj3Ta3kbmks3YndGqrgyYVHE4DQP0PQ3HzAAKsqB9f5i-hoCnS4QAvD_BwE; _gat_UA-78571735-4=1; TR10062602448_t_uid=49545853018139668.1604578760316; TR10062602448_t_sst=49545577600001139.1604578760316; TR10062602448_t_if=15.0.0.0.null.null.null.0',
         'Sec-Fetch-User': '?1',
         'Upgrade-Insecure-Requests': '1',
-        'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/86.0.4240.75 Safari/537.36'
+        'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/86.0.4240.183 Safari/537.36'
     }
     res = requests.get(
         url, headers=headers)
+
     soup = bs(res.text, 'html.parser')
     chk_tag_url = soup.find('li', {'class': 'used01'}).find('a')[
         'data-link-url']
@@ -828,7 +799,7 @@ if __name__ == '__main__':
     result_list = Manager().list()
     num = Manager().list()
     num.append(0)
-    df = pd.read_csv('filtered_url.csv')
+    df = pd.read_csv('C:/Users/jlee/Desktop/아름드리/filtered_url_2.csv')
     car_urls = list(df['url'].values)
     print(len(car_urls))
     num_cores = multiprocessing.cpu_count()
