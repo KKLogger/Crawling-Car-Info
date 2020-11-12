@@ -28,6 +28,7 @@ def process_json():
                 result.append(dict_data)
             except:
                 print("Fail", num)
+    result = list(set(result))
 
     print("총 json에 차량 개수 ", len(result))
 
@@ -36,4 +37,20 @@ def process_json():
 
 
 ###main ##
-process_json()
+# process_json()
+
+for num in range(32, 49):
+    result = list()
+    with open('C:/Users/jlee/Desktop/result{num}_t.json'.format(num=num), encoding='utf-8-sig', errors='ignore') as f:
+        str_data = f.read()
+    str_data = str_data.replace('{}', "")
+    str_data = str_data.replace('}{', "}///{")
+    str_datas = str_data.split('///')
+
+    for num, str_data in enumerate(str_datas):
+        if num == 499:
+            break
+        dict_data = literal_eval(str_data)
+        with open('C:/Users/jlee/Desktop/result50_t.json', 'a', encoding='utf-8-sig') as ff:
+            json.dump(dict_data, ff, indent=4,
+                      ensure_ascii=False, sort_keys=True)
