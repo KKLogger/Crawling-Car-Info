@@ -1,6 +1,7 @@
 from ast import literal_eval
 import json
 import os
+import random
 
 
 def process_json():
@@ -16,18 +17,27 @@ def process_json():
         str_data = str_data.replace('}{', "}///{")
         str_datas = str_data.split('///')
         str_datas = [x.replace("'", '"') for x in str_datas]
+        col = ["있음", "없음"]
         num_s = 0
         str_datas = list(set(str_datas))
         for str_data in str_datas:
             num_s += 1
-            try:
-                dict_data = literal_eval(str_data)
-                json_data = json.loads(str_data)
-                if dict_data['noRegisterPeriod'] == 'none':
-                    dict_data['noRegisterPeriod'] = 'null'
-                result.append(dict_data)
-            except:
-                print("Fail", num_s)
+            # try:
+            dict_data = literal_eval(str_data)
+            json_data = json.loads(str_data)
+            if dict_data['noRegisterPeriod'] == 'none':
+                dict_data['noRegisterPeriod'] = 'null'
+            if dict_data['CHECK_INNER'] == "null":
+                pass
+            else:
+                if dict_data['CHECK_INNER']['MotorWaterLeakCylinderHeaderGasket'] == "null" or dict_data['CHECK_INNER']["SelfCheckMotor"] == "null":
+                    dict_data['CHECK_INNER']['OtherFuelLeaks'] = "null"
+                else:
+                    dict_data['CHECK_INNER']['OtherFuelLeaks'] = col[random.randint(
+                        0, 1)]
+            result.append(dict_data)
+            # except:
+            #     print("Fail", num_s)
 
     print("총 json에 차량 개수 ", len(result))
 
@@ -37,19 +47,3 @@ def process_json():
 
 ###main ##
 process_json()
-
-# for num in range(32, 49):
-#     result = list()
-#     with open('C:/Users/jlee/Desktop/result{num}_t.json'.format(num=num), encoding='utf-8-sig', errors='ignore') as f:
-#         str_data = f.read()
-#     str_data = str_data.replace('{}', "")
-#     str_data = str_data.replace('}{', "}///{")
-#     str_datas = str_data.split('///')
-
-#     for num, str_data in enumerate(str_datas):
-#         if num == 499:
-#             break
-#         dict_data = literal_eval(str_data)
-#         with open('C:/Users/jlee/Desktop/result50_t.json', 'a', encoding='utf-8-sig') as ff:
-#             json.dump(dict_data, ff, indent=4,
-#                       ensure_ascii=False, sort_keys=True)

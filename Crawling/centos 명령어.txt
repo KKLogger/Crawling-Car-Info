@@ -1,0 +1,21 @@
+
+
+
+
+
+1-> 50
+2 -> FTP
+48 -> 15
+44 -> 5
+43 -> 6
+38 -> 8
+34 -> 10
+28 -> 11	
+27 -> 16
+26 -> 22
+25 -> 23
+21 -> 24
+20 -> 29
+
+
+sudo yum update; sudo yum install -y python3 pip3; pip3 install --user litereval; pip3 install --user requests; pip3 install --user pandas; pip3 install --user scp; pip3 install --user paramiko; pip3 install --user bs4; sudo yum install git; git init; git clone https://github.com/KKLogger/daily_crawling.git; cd daily_crawling;

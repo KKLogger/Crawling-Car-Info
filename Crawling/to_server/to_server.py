@@ -604,8 +604,8 @@ def crawl_iframe(url, temp):
     #     'tr')[39].find('div', {'class': 'option-ch'}).get('value')
     # result['고전원전기장치 고전원전기배선상태'] = table[4].find('tbody').find_all(
     #     'tr')[40].find('div', {'class': 'option-ch'}).get('value')
-    # check_inner['OtherFuelLeaks'] = table[4].find('tbody').find_all(
-    #     'tr')[41].find('div', {'class': 'option-ch'}).get('value')
+    check_inner['OtherFuelLeaks'] = table[4].find('tbody').find_all(
+        'tr')[41].find('div', {'class': 'option-ch'}).get('value')
     # result['수리필요 외장'] = table[5].find('tbody').find_all(
     #     'tr')[0].find('div', {'class': 'option-ch'}).get('value')
     # result['수리필요 광택'] = table[5].find('tbody').find_all(
