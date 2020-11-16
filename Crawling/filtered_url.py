@@ -5,6 +5,8 @@ from bs4 import BeautifulSoup as bs
 from multiprocessing import Pool, freeze_support, Manager
 import pandas as pd
 import time
+import random
+
 
 def get_page_url(page_num, user_code, maker_code):
     url = 'https://www.kbchachacha.com/public/search/list.empty?page=' + \
@@ -31,15 +33,15 @@ def get_car_urls(user_code, car_url_list):
                    '154', '126', '173', '139',
                    '169', '143', '167', '127']
     for maker_code in maker_codes:
+        print(maker_code)
         page_num = 0
         while(True):
-            time.sleep(3)
+            time.sleep(2)
             page_num += 1
             url = get_page_url(page_num, user_code, maker_code)
-            print(url)
             response = requests.get(url)
             soup = bs(response.text, "html.parser")
-            print(page_num)
+            car_url_list = list(set(car_url_list))
             #####종료 조건 ###############
             # if page_num == 3:
             #     break
@@ -49,17 +51,22 @@ def get_car_urls(user_code, car_url_list):
             if soup.find('h2') is None:
                 print('종료, blocked')
                 break
-            items = soup.find_all('a')
-            for item in items:
-                if 'detail.kbc?carSeq' in item['href']:
-                    item_href = item['href']
-                    if 'https://' in item_href:
-                        car_url_list.append(item_href)
-                    else:
-                        car_url_list.append(
-                            'https://www.kbchachacha.com' + item_href)
+            car_list = soup.find_all('div', {'class': 'area'})
 
-    # return car_url_list
+            for car in car_list:
+                items = car.find_all('a')
+                for item in items:
+                    if 'detail.kbc?carSeq' in item['href']:
+                        item_href = item['href']
+                        price = car.find(
+                            'strong', {'class', 'pay'}).text.strip()
+                        if 'https://' in item_href:
+                            car_url_list.append(item_href+"///" + price)
+                        else:
+                            car_url_list.append(
+                                'https://www.kbchachacha.com' + item_href + "///" + price)
+
+    return car_url_list
 
 
 if __name__ == '__main__':
@@ -68,8 +75,9 @@ if __name__ == '__main__':
     manager = Manager()
     car_url_list = manager.list()
     num_cores = multiprocessing.cpu_count()
+
     # https://dailyheumsi.tistory.com/105
-    pool = Pool(processes=6)
+    pool = Pool(processes=num_cores)
     pool.starmap(get_car_urls, zip(['002001', '002002', '002003', '002004', '002005', '002006',
                                     '002007', '002008', '002009', '002010', '002011', '002012', '002013'], repeat(car_url_list)))
     pool.close()
@@ -78,4 +86,3 @@ if __name__ == '__main__':
     car_url_list = list(set(car_url_list))
     df['url'] = car_url_list
     df.to_csv('filtered_url.csv')
-    print(len(car_url_list))

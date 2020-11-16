@@ -1,49 +1,17 @@
 import os
+import sys
 from ast import literal_eval
+import json
 import requests
 from bs4 import BeautifulSoup as bs
+import requests
 import pandas as pd
-import json
-from urllib.request import urlopen
-from fake_useragent import UserAgent
-
-
-def get_page_url(page_num):
-    url = 'https://www.kbchachacha.com/public/search/list.empty?page=' + \
-        str(page_num) + '&sort=-orderDate&useCode=' + '&_pageSize=3&pageSize=4'
-    return url
-
-
-def get_car_urls():
-
-    car_url_list = list()
-    page_num = 0
-    while(True):
-        page_num += 1
-        url = get_page_url(page_num)
-        print(url)
-        response = requests.get(url)
-        soup = bs(response.text, "html.parser")
-        print(page_num)
-        #######종료 조건 ###############
-        if page_num == 50:
-            break
-        # if soup.find('span', {'class': 'txt'}) is not None:
-        #     print('종료')
-        #     break
-
-        items = soup.find_all('a')
-        for item in items:
-            if 'detail.kbc?carSeq' in item['href']:
-                item_href = item['href']
-                if 'https://' in item_href:
-                    car_url_list.append(item_href)
-                else:
-                    car_url_list.append(
-                        'https://www.kbchachacha.com' + item_href)
-
-    car_url_list = list(set(car_url_list))
-    return car_url_list
+import paramiko
+import time
+import random
+from scp import SCPClient, SCPException
+local_path = '/home/ec2-user/daily_crawling/'
+remote_path = '/home/centos/result_from_servers/'
 
 
 def get_car_info(url, temp):
@@ -60,10 +28,12 @@ def get_car_info(url, temp):
         'Sec-Fetch-Site': 'none',
         'Sec-Fetch-User': '?1',
         'Upgrade-Insecure-Requests': '1',
-        'User-Agent': UserAgent().random
+        'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/86.0.4240.183 Safari/537.36'
     }
     response = requests.get(url, headers=headers)
     soup = bs(response.text, 'html.parser')
+    # if soup.find('h2') is None:
+    #     raise Exception("blocked")
     Cookie = response.cookies.get('cha-cid')
     Cookie = "cha-cid=" + Cookie + ";"
     carSeq = url[url.index('?carSeq=')+len('?carSeq='):]
@@ -84,7 +54,7 @@ def get_car_info(url, temp):
         'Sec-Fetch-Dest': 'empty',
         'Sec-Fetch-Mode': 'cors',
         'Sec-Fetch-Site': 'same-origin',
-        'User-Agent': UserAgent().random,
+        'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/86.0.4240.183 Safari/537.36',
         'X-AJAX': 'true',
     }
     json_data = {
@@ -106,7 +76,6 @@ def get_car_info(url, temp):
         temp['Model'] = 'null'
         temp['Badge'] = 'null'
         temp['Grade'] = 'null'
-    # 차 정보
     car_price = soup.find(
         'div', {'class': 'car-buy-price'}).find('div').find('strong').text
     car_info1 = soup.find('dl', {'class': 'claerFix'}).find_all('dd')
@@ -117,17 +86,20 @@ def get_car_info(url, temp):
 
     car_year = car_info[1]
     car_year = car_year[car_year.index('(')+1:car_year.index(')')]
-
-    if soup.find('div', {'class': 'suc-price'}) is None:
-        if soup.find_all('div', {'class': 'car-buy-debt-m'})[1].find('div').text == '리스 이용 금융상담문의':
-            car_saletype = 'NORMAL_SALE'
-            SeparationLease = "False"
+    try:
+        if soup.find('div', {'class': 'suc-price'}) is None:
+            if soup.find_all('div', {'class': 'car-buy-debt-m'})[1].find('div').text == '리스 이용 금융상담문의':
+                car_saletype = 'NORMAL_SALE'
+                SeparationLease = "False"
+            else:
+                car_saletype = 'LEASE_SALE'
+                SeparationLease = "True"
         else:
             car_saletype = 'LEASE_SALE'
             SeparationLease = "True"
-    else:
-        car_saletype = 'LEASE_SALE'
-        SeparationLease = "True"
+    except:
+        car_saletype = 'null'
+        SeparationLease = "null"
     if soup.find('div', {'class': 'dealer-info-area'}).find('span', {'place-add'}).text == '개인판매자':
         SeparationDealer = 'False'
         SeparationIndividual = 'True'
@@ -250,7 +222,7 @@ def get_options(url):
         'Sec-Fetch-Site': 'same-origin',
         'Sec-Fetch-User': '?1',
         'Upgrade-Insecure-Requests': '1',
-        'User-Agent': UserAgent().random
+        'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/86.0.4240.183 Safari/537.36'
     }
     jump = len('?carSeq=')
     result = dict()
@@ -354,7 +326,7 @@ def get_history(url, temp):
         'Sec-Fetch-Site': 'same-origin',
         'Sec-Fetch-User': '?1',
         'Upgrade-Insecure-Requests': '1',
-        'User-Agent': UserAgent().random
+        'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/86.0.4240.183 Safari/537.36'
     }
     datas = {
         'layerId': 'layerCarHistoryInfo',
@@ -378,7 +350,7 @@ def get_history(url, temp):
         noRegisterPeriod = "none"
     else:
         noRegisterPeriod = noRegisterPeriod.find_all('div', {'class', 'date'})
-        noRegisterPeriod = [x.text.replace(' ', '') for x in noRegisterPeriod]
+        noRegisterPeriod = [x.text for x in noRegisterPeriod]
 
     historys = soup.find_all(
         'div', {'class': 'cmm-table table-l02 ct-line td-ptb-15'})
@@ -457,55 +429,46 @@ def get_history(url, temp):
     temp['HistOwner'] = 'null'
     return temp
 
-    # main
 
-
-def start():
-    result = list()
-    car_urls = get_car_urls()
-
+def start(urls, server_num):
     num = 0
-    for url in car_urls:
-        print(url)
-        num += 1
-        print(len(car_urls), "중에", num)
-        temp = dict()
-        try:
-            temp = get_car_info(
-                url, temp)
-            print('done car_info')
-        except:
-            print('error in car_info')
-            pass
-        try:
-            temp.update(get_history(
-                url, temp))
-            print('done car_history')
-        except:
-            print('error in history')
-            pass
-        try:
-            temp['Options'] = get_options(
-                url)
-            print('done options')
-        except:
-            print('error in options')
-            pass
-        try:
-            temp = get_checkdata(url, temp)
-            print('done checkdata')
-        except:
-            print('error in checkdata')
-            pass
-        # temp = get_car_info(url, temp)
-        # temp.update(get_history(url, temp))
-        # temp['Options'] = get_options(url)
-        # temp = get_checkdata(url, temp)
-        with open('/home/centos/chan//result_t.json', 'a', encoding='utf-8-sig') as outfile:
-            json.dump(temp, outfile, indent=4,
-                      ensure_ascii=False, sort_keys=True)
+    time.sleep(random.randint(3, 5))
+    for url in urls:
 
-    print("완-----료")
+        temp = dict()
+        # try:
+        #     temp = get_car_info(
+        #         url, temp)
+        # except:
+        #     print("error in car info")
+        # try:
+        #     temp.update(get_history(
+        #         url, temp))
+        # except:
+        #     print("error in car history")
+        # try:
+        #     temp['Options'] = get_options(
+        #         url)
+        # except:
+        #     print("error in car options")
+        # try:
+        #     temp = get_checkdata(url, temp)
+        # except:
+        #     print("error in car checkdata")
+        try:
+            temp = get_car_info(url, temp)
+            temp.update(get_history(url, temp))
+            temp['Options'] = get_options(url)
+            temp = get_checkdata(url, temp)
+            num += 1
+
+            print("현재 : ", num)
+            if bool(temp):
+                with open(local_path + 'result_t{server_num}.json'.format(server_num=server_num), 'a', encoding='utf-8-sig') as outfile:
+                    json.dump(temp, outfile, indent=4,
+                              ensure_ascii=False, sort_keys=True)
+        except Exception as e:
+            print(f"error : {e}")
 
 
 def crawl_iframe(url, temp):
@@ -643,8 +606,8 @@ def crawl_iframe(url, temp):
     #     'tr')[39].find('div', {'class': 'option-ch'}).get('value')
     # result['고전원전기장치 고전원전기배선상태'] = table[4].find('tbody').find_all(
     #     'tr')[40].find('div', {'class': 'option-ch'}).get('value')
-    # check_inner['OtherFuelLeaks'] = table[4].find('tbody').find_all(
-    #     'tr')[41].find('div', {'class': 'option-ch'}).get('value')
+    check_inner['OtherFuelLeaks'] = table[4].find('tbody').find_all(
+        'tr')[41].find('div', {'class': 'option-ch'}).get('value')
     # result['수리필요 외장'] = table[5].find('tbody').find_all(
     #     'tr')[0].find('div', {'class': 'option-ch'}).get('value')
     # result['수리필요 광택'] = table[5].find('tbody').find_all(
@@ -743,10 +706,11 @@ def get_checkdata(url, temp):
         'Sec-Fetch-Site': 'none',
         'Sec-Fetch-User': '?1',
         'Upgrade-Insecure-Requests': '1',
-        'User-Agent': UserAgent().random
+        'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/86.0.4240.183 Safari/537.36'
     }
     res = requests.get(
         url, headers=headers)
+
     soup = bs(res.text, 'html.parser')
     chk_tag_url = soup.find('li', {'class': 'used01'}).find('a')[
         'data-link-url']
@@ -774,14 +738,11 @@ def get_checkdata(url, temp):
                 temp['MotorType'] = 'null'
                 temp['WarrantyType'] = 'null'
                 temp['IssueDt'] = 'null'
-                # print("None Data")
-                pass
             else:
                 # call iframe scraper
                 temp = crawl_iframe(url, temp)
 
         else:
-            # print("image")
             temp['CHECK_INNER'] = "null"
             temp['CHECK_OUTER'] = "null"
             temp['RegistrationID'] = "null"
@@ -793,6 +754,9 @@ def get_checkdata(url, temp):
 
 
 def get_dateform(date):
+    '''
+    input : 
+    '''
     y = date[3]
     m = date[2]
     d = date[1]
@@ -808,9 +772,13 @@ def get_dateform(date):
 
 
 def process_json():
-
+    '''
+    input : X
+    output :  X
+    dict로 나열된 파일을 json array 형태로 변환 
+    '''
     result = list()
-    with open('/home/centos/chan/result_t.json', encoding='utf-8-sig', errors='ignore') as f:
+    with open(local_path + 'result_t.json', encoding='utf-8-sig', errors='ignore') as f:
         str_data = f.read()
     str_data = str(str_data)
     str_data = str_data[:]
@@ -829,12 +797,171 @@ def process_json():
             result.append(dict_data)
         except:
             print("Fail", num)
-    os.remove('/home/centos/chan/result_t.json')
+
     print("총 json에 차량 개수 ", len(result))
-    with open('/home/centos/chan/result.json', 'a', encoding='utf-8-sig') as ff:
+    os.remove(local_path+'result_t.json')
+    with open(local_path+'result.json', 'w', encoding='utf-8-sig') as ff:
         json.dump(result, ff, indent=4, ensure_ascii=False, sort_keys=True)
 
 
-# test('https://www.kbchachacha.com/public/car/detail.kbc?carSeq=20831927')
-start()
-process_json()
+class SSHManager:
+    """
+    usage:
+        >>> import SSHManager
+        >>> ssh_manager = SSHManager()
+        >>> ssh_manager.create_ssh_client(hostname, username, password)
+        >>> ssh_manager.send_command("ls -al")
+        >>> ssh_manager.send_file("/path/to/local_path", "/path/to/remote_path")
+        >>> ssh_manager.get_file("/path/to/remote_path", "/path/to/local_path")
+        ...
+        >>> ssh_manager.close_ssh_client()
+    """
+
+    def __init__(self):
+        self.ssh_client = None
+
+    def create_ssh_client(self, hostname, username, password, key_filename):
+        """Create SSH client session to remote server"""
+        port = 22
+        if self.ssh_client is None:
+            self.ssh_client = paramiko.SSHClient()
+            self.ssh_client.set_missing_host_key_policy(
+                paramiko.AutoAddPolicy())
+            self.ssh_client.connect(
+                hostname, port=port, username=username, password=password, key_filename=key_filename)
+        else:
+            print("SSH client session exist.")
+
+    def close_ssh_client(self):
+        """Close SSH client session"""
+        self.ssh_client.close()
+
+    def send_file(self, local_path, remote_path):
+        """Send a single file to remote path"""
+        try:
+            with SCPClient(self.ssh_client.get_transport()) as scp:
+                scp.put(local_path, remote_path, preserve_times=True)
+        except SCPException:
+            raise SCPException.message
+
+    def get_file(self, remote_path, local_path):
+        """Get a single file from remote path"""
+        try:
+            with SCPClient(self.ssh_client.get_transport()) as scp:
+                scp.get(remote_path, local_path)
+        except SCPException:
+            raise SCPException.message
+
+    def send_command(self, command):
+        """Send a single command"""
+        stdin, stdout, stderr = self.ssh_client.exec_command(command)
+        return stdout.readlines()
+
+
+def compare_car(p_car_urls, r_car_urls):
+    '''
+    input : url///price list 어제 수집한 데이터 와 오늘 수집한 데이터
+    output : 두 list 를 비교하여 신규등록 차량 리스트와 판매완료 차량 리스트 반환 
+    '''
+    new_car_urls = set(r_car_urls) - set(p_car_urls)
+    sold_car_urls = set(p_car_urls) - set(r_car_urls)
+    return new_car_urls, sold_car_urls
+
+
+def split_car(url_price):
+    '''
+    input : url///price 으로 된 str list
+    ouput : url 과 price를 split ,price list 와 url list로  반환
+    '''
+    price = list()
+    url = list()
+    for item in url_price:
+        try:
+            price.append(item.split('///')[1])
+        except:
+            pass
+        url.append(item.split('///')[0])
+    return url, price
+'''
+>>> main
+'''
+server_num = int(sys.argv[1])
+ssh_manager = SSHManager()
+ssh_manager.create_ssh_client(
+    "133.186.150.193", "centos", "gozjRjwu~!", key_filename=local_path + 'shopify.pem')  # 세션생성
+'''
+>>> data load
+'''
+ssh_manager.get_file(remote_path + 'filtered_url_1.csv',
+                     local_path + 'filtered_url_1.csv')  # 파일다운로드
+ssh_manager.get_file(remote_path + 'filtered_url_2.csv',
+                     local_path + 'filtered_url_2.csv')  # 파일다운로드
+ssh_manager.get_file(remote_path + 'filtered_url_3.csv',
+                     local_path + 'filtered_url_3.csv')  # 파일다운로드
+ssh_manager.get_file(remote_path + 'filtered_url_4.csv',
+                     local_path + 'filtered_url_4.csv')  # 파일다운로드
+ssh_manager.get_file(remote_path + 'filtered_url_5.csv',
+                     local_path + 'filtered_url_5.csv')  # 파일다운로드
+ssh_manager.get_file(remote_path + 'filtered_url_6.csv',
+                     local_path + 'filtered_url_6.csv')  # 파일다운로드
+r_df_1 = pd.read_csv(local_path + 'filtered_url_1.csv')
+r_df_2 = pd.read_csv(local_path + 'filtered_url_2.csv')
+r_df_3 = pd.read_csv(local_path + 'filtered_url_3.csv')
+r_df_4 = pd.read_csv(local_path + 'filtered_url_4.csv')
+r_df_5 = pd.read_csv(local_path + 'filtered_url_5.csv')
+r_df_6 = pd.read_csv(local_path + 'filtered_url_6.csv')
+p_df = pd.read_csv(local_path + 'filtered_url.csv')
+r_car_urls = list(r_df_1['url']) + list(r_df_2['url']) + \
+    list(r_df_3['url']) + list(r_df_4['url']) + \
+    list(r_df_5['url']) + list(r_df_6['url'])
+p_car_urls = list(p_df['url'])
+os.remove(local_path + 'filtered_url_1.csv')
+os.remove(local_path + 'filtered_url_2.csv')
+os.remove(local_path + 'filtered_url_3.csv')
+os.remove(local_path + 'filtered_url_4.csv')
+os.remove(local_path + 'filtered_url_5.csv')
+os.remove(local_path + 'filtered_url_6.csv')
+'''
+>>> 새로운 데이터 갱신
+'''
+r_df = pd.DataFrame(data=r_car_urls, columns=['url'])
+r_df.to_csv(local_path + 'filtered_url.csv')
+'''
+>>>url,price 비교 후 신차,판완차 저장
+'''
+new_car, sold_car = compare_car(p_car_urls, r_car_urls)
+print(len(new_car))
+print(len(sold_car))
+new_url, new_price = split_car(new_car)
+sold_url, sold_price = split_car(sold_car)
+'''
+>>> 판매 완료된 차량 저장
+'''
+sold_dict = {
+    "url": sold_url,
+    "price": sold_price
+}
+s_df = pd.DataFrame(sold_dict)
+s_df.to_csv(local_path +
+            'sold_car{server_num}.csv'.format(server_num=server_num), encoding='euc-kr')
+'''
+>>>신규 등록차량 차량 정보 수집 !!!서버에 분배 
+'''
+
+per_num = len(new_url)//29
+if server_num * per_num > len(new_url):
+    new_url = new_url[per_num*(server_num-1):]
+else:
+    new_url = new_url[per_num*(server_num-1):per_num*(server_num)]
+start(new_url, server_num)
+# process_json()
+
+ssh_manager.send_file(local_path + 'result_t{server_num}.json'.format(server_num=server_num),
+                      remote_path + 'result_t{server_num}.json'.format(server_num=server_num))  # 파일전송
+ssh_manager.send_file(local_path + 'sold_car{server_num}.csv'.format(server_num=server_num),
+                      remote_path + 'sold_car{server_num}.csv'.format(server_num=server_num))  # 파일전송
+os.remove(
+    local_path + 'result_t{server_num}.json'.format(server_num=server_num))
+os.remove(
+    local_path + 'sold_car{server_num}.csv'.format(server_num=server_num))
+ssh_manager.close_ssh_client()  # 세션종료
