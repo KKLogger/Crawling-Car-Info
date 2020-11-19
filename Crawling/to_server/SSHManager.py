@@ -1,19 +1,5 @@
-import os
-import sys
-from ast import literal_eval
-import json
-import requests
-from bs4 import BeautifulSoup as bs
-import requests
-import pandas as pd
-import paramiko
-import time
-import random
 from scp import SCPClient, SCPException
-
-local_path = 'C:/Users/jlee/Desktop/test/'
-remote_path = '/home/centos/result_from_servers/'
-
+import paramiko
 
 class SSHManager:
     """
@@ -67,11 +53,3 @@ class SSHManager:
         """Send a single command"""
         stdin, stdout, stderr = self.ssh_client.exec_command(command)
         return stdout.readlines()
-
-
-ssh_manager = SSHManager()
-ssh_manager.create_ssh_client(
-    "133.186.150.193", "centos", "gozjRjwu~!", key_filename=local_path + 'shopify.pem')  # 세션생성
-ssh_manager.send_file(local_path+'asd.txt.txt', remote_path+"1.txt")  # 파일전송
-ssh_manager.get_file(remote_path+"1.txt", local_path+'2.txt')  # 파일다운로드
-ssh_manager.close_ssh_client()  # 세션종료

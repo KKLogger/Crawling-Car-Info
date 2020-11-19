@@ -1,4 +1,5 @@
 {
     "python.pythonPath": "Crawling\\Scripts\\python.exe"
-    ,"files.autoSave": "onWindowChange"
+    ,"files.autoSave": "onWindowChange",
+    "python.analysis.extraPaths": [".\\Crawling"]
 }

@@ -1,20 +1,16 @@
-import os
-import sys
-from ast import literal_eval
-import json
-import requests
-from bs4 import BeautifulSoup as bs
-import requests
-import pandas as pd
-import paramiko
 import time
 import random
-from scp import SCPClient, SCPException
-local_path = '/home/ec2-user/daily_crawling/'
-remote_path = '/home/centos/result_from_servers/'
+import requests
+from bs4 import BeautifulSoup as bs
+import pandas as pd
+from data_processing import *
 
 
 def get_car_info(url, temp):
+    '''
+    >>>input url, 차량 데이터 담을 dict
+    >>>get_checkdata 함수와 get_history에서 사용할 인자(requests 보낼때 필요)
+    '''
     headers = {
         'Accept': 'text/html,application/xhtml+xml,application/xml;q=0.9,image/avif,image/webp,image/apng,*/*;q=0.8,application/signed-exchange;v=b3;q=0.9',
         'Accept-Encoding': 'gzip, deflate, br',
@@ -30,8 +26,15 @@ def get_car_info(url, temp):
         'Upgrade-Insecure-Requests': '1',
         'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/86.0.4240.183 Safari/537.36'
     }
+    time.sleep(random.uniform(0.1,0.25))
     response = requests.get(url, headers=headers)
     soup = bs(response.text, 'html.parser')
+    soup_t = str(soup)
+    str_len = len('carHistorySeq = "')
+    carHistorySeq = soup_t[soup_t.index(
+        'carHistorySeq = "')+str_len:soup_t.index('"', soup_t.index('carHistorySeq = "')+str_len)]
+    chk_tag_url = soup.find('li', {'class': 'used01'}).find('a')[
+        'data-link-url']
     # if soup.find('h2') is None:
     #     raise Exception("blocked")
     Cookie = response.cookies.get('cha-cid')
@@ -63,6 +66,7 @@ def get_car_info(url, temp):
         'carSeqVal': carSeq
     }
     try:
+        time.sleep(random.uniform(0.1,0.25))
         res_json = requests.post(
             json_url, headers=json_headers, data=json_data)
         car_dict = res_json.json()
@@ -125,6 +129,7 @@ def get_car_info(url, temp):
 
     img_src = soup.find('ul', {'class': 'bxslider'}).find('img').get('src')
     try:
+        time.sleep(random.uniform(0.1,0.25))
         t_date = requests.get(img_src).headers['Last-Modified'].split(' ')
         ModifiedDate = get_dateform(t_date)
     except:
@@ -202,41 +207,61 @@ def get_car_info(url, temp):
     # NoTax
 
     result = temp
-    return result
+    return result, carHistorySeq, chk_tag_url
 
 
-def get_options(url):
-    headers = {
-        'Accept': 'text/html,application/xhtml+xml,application/xml;q=0.9,image/avif,image/webp,image/apng,*/*;q=0.8,application/signed-exchange;v=b3;q=0.9',
-        'Accept-Encoding': 'gzip, deflate, br',
-        'Accept-Language': 'ko-KR,ko;q=0.9,en-US;q=0.8,en;q=0.7',
-        'Cache-Control': 'no-cache',
-        'Connection': 'keep-alive',
-        'Content-Length': '42',
-        'Content-Type': 'application/x-www-form-urlencoded',
-        'Host': 'www.kbchachacha.com',
-        'Origin': 'https://www.kbchachacha.com',
-        'Pragma': 'no-cache',
-        'Sec-Fetch-Dest': 'iframe',
-        'Sec-Fetch-Mode': 'navigate',
-        'Sec-Fetch-Site': 'same-origin',
-        'Sec-Fetch-User': '?1',
-        'Upgrade-Insecure-Requests': '1',
-        'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/86.0.4240.183 Safari/537.36'
-    }
-    jump = len('?carSeq=')
-    result = dict()
-    index = url.index('?carSeq=') + jump
-    carSeq = url[index:]
-    data = {
-        'layerId': 'layerCarOptionView',
-        'carSeq': carSeq
-    }
-    res = requests.post(
-        'https://www.kbchachacha.com/public/layer/car/option/list.kbc', headers=headers, data=data)
-    soup = bs(res.text, 'html.parser')
-    option_codes = soup.find('input', {'id': 'carOption'})[
-        'value'].split(',')
+def get_checkdata(url, temp, chk_tag_url):
+    '''
+    >>>input url, 차량정보 저장할 dict, 성능점검표 url
+    >>>output 차량정보
+    '''
+    if 'http' in chk_tag_url:  # 다른 페이지로 이동
+        # call domain by scraper
+        temp['CHECK_INNER'] = "null"
+        temp['CHECK_OUTER'] = "null"
+    else:
+        carSeq = url[url.index('?carSeq=')+len('?carSeq='):]
+        data = {
+            'layerId': 'layerCarCheckInfo',
+            'carSeq': carSeq
+        }
+        time.sleep(random.uniform(0.1,0.25))
+        res = requests.post(
+            'https://www.kbchachacha.com/public/layer/car/check/info.kbc', data=data)
+
+        soup = bs(res.text, 'html.parser')
+
+        img_check = soup.find('div', {'class': 'ch-car-txt'})
+        if img_check == None:
+            if soup.find('div', {'class': 'ch-car-name'}) == None:
+                temp['CHECK_INNER'] = "null"
+                temp['CHECK_OUTER'] = "null"
+                temp['RegistrationID'] = "null"
+                temp['MotorType'] = 'null'
+                temp['WarrantyType'] = 'null'
+                temp['IssueDt'] = 'null'
+            else:
+                # call iframe scraper
+                temp = crawl_iframe(url, temp, soup)
+
+        else:
+            temp['CHECK_INNER'] = "null"
+            temp['CHECK_OUTER'] = "null"
+            temp['RegistrationID'] = "null"
+            temp['MotorType'] = 'null'
+            temp['WarrantyType'] = 'null'
+            temp['IssueDt'] = 'null'
+
+    return temp
+
+
+def get_options(url, option_codes):
+    '''
+    >>>input url, 차량의 옵션 항목들을 가지고 있는 리스트
+    option_codes중에서 해당 차량이 어떤 옵션이 있는지 비교 후 dict에 저장
+    >>>output option 관련 정보만 수집한 dict
+    '''
+    time.sleep(random.uniform(0.1,0.25))
     res = requests.post(
         'https://www.kbchachacha.com/public/car/option/code/list.json')
     json_datas = json.loads(res.text)
@@ -294,22 +319,48 @@ def get_options(url):
     return result
 
 
-def df_to_dict(df):
-    result = df.to_dict()
-    for key, value in result.items():
-        result[key] = list(value.values())[0]
-    return result
+def get_optioncodes(url):
+    '''
+    >>>input url -> output 차량 전체 옵션 목록
+    '''
+    headers = {
+        'Accept': 'text/html,application/xhtml+xml,application/xml;q=0.9,image/avif,image/webp,image/apng,*/*;q=0.8,application/signed-exchange;v=b3;q=0.9',
+        'Accept-Encoding': 'gzip, deflate, br',
+        'Accept-Language': 'ko-KR,ko;q=0.9,en-US;q=0.8,en;q=0.7',
+        'Cache-Control': 'no-cache',
+        'Connection': 'keep-alive',
+        'Content-Length': '42',
+        'Content-Type': 'application/x-www-form-urlencoded',
+        'Host': 'www.kbchachacha.com',
+        'Origin': 'https://www.kbchachacha.com',
+        'Pragma': 'no-cache',
+        'Sec-Fetch-Dest': 'iframe',
+        'Sec-Fetch-Mode': 'navigate',
+        'Sec-Fetch-Site': 'same-origin',
+        'Sec-Fetch-User': '?1',
+        'Upgrade-Insecure-Requests': '1',
+        'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/86.0.4240.183 Safari/537.36'
+    }
+    jump = len('?carSeq=')
+    index = url.index('?carSeq=') + jump
+    carSeq = url[index:]
+    data = {
+        'layerId': 'layerCarOptionView',
+        'carSeq': carSeq
+    }
+    res = requests.post(
+        'https://www.kbchachacha.com/public/layer/car/option/list.kbc', headers=headers, data=data)
+    soup = bs(res.text, 'html.parser')
+    option_codes = soup.find('input', {'id': 'carOption'})[
+        'value'].split(',')
+    return option_codes
 
 
-def get_history(url, temp):
-
-    response = requests.get(url)
-    soup = bs(response.text, 'html.parser')
-    soup = str(soup)
-    str_len = len('carHistorySeq = "')
-    carHistorySeq = soup[soup.index(
-        'carHistorySeq = "')+str_len:soup.index('"', soup.index('carHistorySeq = "')+str_len)]
-
+def get_history(url, temp, carHistorySeq):
+    '''
+    >>> input url,dict, 차량사고내역정보관련 고유번호
+    >>> output dict
+    '''
     headers = {
         'Accept': 'text/html,application/xhtml+xml,application/xml;q=0.9,image/avif,image/webp,image/apng,*/*;q=0.8,application/signed-exchange;v=b3;q=0.9',
         'Accept-Encoding': 'gzip, deflate, br',
@@ -332,6 +383,7 @@ def get_history(url, temp):
         'layerId': 'layerCarHistoryInfo',
         'carHistorySeq': carHistorySeq
     }
+    time.sleep(random.uniform(0.1,0.25))
     response = requests.post(
         'https://www.kbchachacha.com/public/layer/car/history/info.kbc', headers=headers, data=datas)
     soup = bs(response.text, 'html.parser')
@@ -356,24 +408,6 @@ def get_history(url, temp):
         'div', {'class': 'cmm-table table-l02 ct-line td-ptb-15'})
     HistDamage = dict()
 
-    class dateform(object):
-        def __init__(self, date):
-            self.num = int(date.split(
-                '-')[0] + date.split('-')[1] + date.split('-')[2])
-            y = date.split('-')[0] + "년"
-            m = date.split('-')[1] + "월"
-            d = date.split('-')[2] + "일"
-            date = y+m+d
-            self.date = date
-
-        def __str__(self):
-            return self.date
-
-        def __repr__(self):
-            return "'"+self.date+"'"
-
-        def __lt__(self, other):
-            return self.num < other.num
     for num, history in enumerate(historys):
         # 내차 피해
         if history.find('tbody').find('tr').find_all('td')[1].text.strip() == '-':
@@ -430,58 +464,11 @@ def get_history(url, temp):
     return temp
 
 
-def start(urls, server_num):
-    num = 0
-    time.sleep(random.randint(3, 5))
-    for url in urls:
-
-        temp = dict()
-        # try:
-        #     temp = get_car_info(
-        #         url, temp)
-        # except:
-        #     print("error in car info")
-        # try:
-        #     temp.update(get_history(
-        #         url, temp))
-        # except:
-        #     print("error in car history")
-        # try:
-        #     temp['Options'] = get_options(
-        #         url)
-        # except:
-        #     print("error in car options")
-        # try:
-        #     temp = get_checkdata(url, temp)
-        # except:
-        #     print("error in car checkdata")
-        try:
-            temp = get_car_info(url, temp)
-            temp.update(get_history(url, temp))
-            temp['Options'] = get_options(url)
-            temp = get_checkdata(url, temp)
-            num += 1
-
-            print("현재 : ", num)
-            if bool(temp):
-                with open(local_path + 'result_t{server_num}.json'.format(server_num=server_num), 'a', encoding='utf-8-sig') as outfile:
-                    json.dump(temp, outfile, indent=4,
-                              ensure_ascii=False, sort_keys=True)
-        except Exception as e:
-            print(f"error : {e}")
-
-
-def crawl_iframe(url, temp):
-
-    carSeq = url[url.index('?carSeq=') + len('?carSeq='):]
-    data = {
-        'layerId': 'layerCarCheckInfo',
-        'carSeq': carSeq
-    }
-    res = requests.post(
-        'https://www.kbchachacha.com/public/layer/car/check/info.kbc', data=data)
-    soup = bs(res.text, 'html.parser')
-
+def crawl_iframe(url, temp, soup):
+    '''
+    >>> input url, dict, 수집할 iframe의 html코드
+    >>> oiutput 성능정검표만 수집한 dict
+    '''
     table = soup.find_all('table')
     temp['RegistrationID'] = table[0].find_all('tr')[5].find('td').text
     if temp['RegistrationID'] == '':
@@ -690,278 +677,3 @@ def crawl_iframe(url, temp):
     temp['CHECK_INNER'] = check_inner
     temp['CHECK_OUTER'] = check_outer
     return temp
-
-
-def get_checkdata(url, temp):
-    headers = {
-        'Accept': 'text/html,application/xhtml+xml,application/xml;q=0.9,image/avif,image/webp,image/apng,*/*;q=0.8,application/signed-exchange;v=b3;q=0.9',
-        'Accept-Encoding': 'gzip, deflate, br',
-        'Accept-Language': 'ko-KR,ko;q=0.9,en-US;q=0.8,en;q=0.7',
-        'Cache-Control': 'no-cache',
-        'Connection': 'keep-alive',
-        'Host': 'www.kbchachacha.com',
-        'Pragma': 'no-cache',
-        'Sec-Fetch-Dest': 'document',
-        'Sec-Fetch-Mode': 'navigate',
-        'Sec-Fetch-Site': 'none',
-        'Sec-Fetch-User': '?1',
-        'Upgrade-Insecure-Requests': '1',
-        'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/86.0.4240.183 Safari/537.36'
-    }
-    res = requests.get(
-        url, headers=headers)
-
-    soup = bs(res.text, 'html.parser')
-    chk_tag_url = soup.find('li', {'class': 'used01'}).find('a')[
-        'data-link-url']
-    if 'http' in chk_tag_url:  # 다른 페이지로 이동
-        # call domain by scraper
-        temp['CHECK_INNER'] = "null"
-        temp['CHECK_OUTER'] = "null"
-    else:
-        carSeq = url[url.index('?carSeq=')+len('?carSeq='):]
-        data = {
-            'layerId': 'layerCarCheckInfo',
-            'carSeq': carSeq
-        }
-        res = requests.post(
-            'https://www.kbchachacha.com/public/layer/car/check/info.kbc', data=data)
-
-        soup = bs(res.text, 'html.parser')
-
-        img_check = soup.find('div', {'class': 'ch-car-txt'})
-        if img_check == None:
-            if soup.find('div', {'class': 'ch-car-name'}) == None:
-                temp['CHECK_INNER'] = "null"
-                temp['CHECK_OUTER'] = "null"
-                temp['RegistrationID'] = "null"
-                temp['MotorType'] = 'null'
-                temp['WarrantyType'] = 'null'
-                temp['IssueDt'] = 'null'
-            else:
-                # call iframe scraper
-                temp = crawl_iframe(url, temp)
-
-        else:
-            temp['CHECK_INNER'] = "null"
-            temp['CHECK_OUTER'] = "null"
-            temp['RegistrationID'] = "null"
-            temp['MotorType'] = 'null'
-            temp['WarrantyType'] = 'null'
-            temp['IssueDt'] = 'null'
-
-    return temp
-
-
-def get_dateform(date):
-    '''
-    input : 
-    '''
-    y = date[3]
-    m = date[2]
-    d = date[1]
-    time = date[4]
-    months = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun',
-              'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec']
-    for i, month in enumerate(months):
-        if month == m:
-            m = i+1
-            break
-    result = str(y) + "년" + str(m) + "월" + str(d) + "일 " + str(time)
-    return result
-
-
-def process_json():
-    '''
-    input : X
-    output :  X
-    dict로 나열된 파일을 json array 형태로 변환 
-    '''
-    result = list()
-    with open(local_path + 'result_t.json', encoding='utf-8-sig', errors='ignore') as f:
-        str_data = f.read()
-    str_data = str(str_data)
-    str_data = str_data[:]
-    str_data = str_data.replace('{}', "")
-    str_data = str_data.replace('}{', "}///{")
-    str_datas = str_data.split('///')
-    str_datas = [x.replace("'", '"') for x in str_datas]
-    num = 0
-
-    for str_data in str_datas:
-        num += 1
-
-        try:
-            dict_data = literal_eval(str_data)
-            json_data = json.loads(str_data)
-            result.append(dict_data)
-        except:
-            print("Fail", num)
-
-    print("총 json에 차량 개수 ", len(result))
-    os.remove(local_path+'result_t.json')
-    with open(local_path+'result.json', 'w', encoding='utf-8-sig') as ff:
-        json.dump(result, ff, indent=4, ensure_ascii=False, sort_keys=True)
-
-
-class SSHManager:
-    """
-    usage:
-        >>> import SSHManager
-        >>> ssh_manager = SSHManager()
-        >>> ssh_manager.create_ssh_client(hostname, username, password)
-        >>> ssh_manager.send_command("ls -al")
-        >>> ssh_manager.send_file("/path/to/local_path", "/path/to/remote_path")
-        >>> ssh_manager.get_file("/path/to/remote_path", "/path/to/local_path")
-        ...
-        >>> ssh_manager.close_ssh_client()
-    """
-
-    def __init__(self):
-        self.ssh_client = None
-
-    def create_ssh_client(self, hostname, username, password, key_filename):
-        """Create SSH client session to remote server"""
-        port = 22
-        if self.ssh_client is None:
-            self.ssh_client = paramiko.SSHClient()
-            self.ssh_client.set_missing_host_key_policy(
-                paramiko.AutoAddPolicy())
-            self.ssh_client.connect(
-                hostname, port=port, username=username, password=password, key_filename=key_filename)
-        else:
-            print("SSH client session exist.")
-
-    def close_ssh_client(self):
-        """Close SSH client session"""
-        self.ssh_client.close()
-
-    def send_file(self, local_path, remote_path):
-        """Send a single file to remote path"""
-        try:
-            with SCPClient(self.ssh_client.get_transport()) as scp:
-                scp.put(local_path, remote_path, preserve_times=True)
-        except SCPException:
-            raise SCPException.message
-
-    def get_file(self, remote_path, local_path):
-        """Get a single file from remote path"""
-        try:
-            with SCPClient(self.ssh_client.get_transport()) as scp:
-                scp.get(remote_path, local_path)
-        except SCPException:
-            raise SCPException.message
-
-    def send_command(self, command):
-        """Send a single command"""
-        stdin, stdout, stderr = self.ssh_client.exec_command(command)
-        return stdout.readlines()
-
-
-def compare_car(p_car_urls, r_car_urls):
-    '''
-    input : url///price list 어제 수집한 데이터 와 오늘 수집한 데이터
-    output : 두 list 를 비교하여 신규등록 차량 리스트와 판매완료 차량 리스트 반환 
-    '''
-    new_car_urls = set(r_car_urls) - set(p_car_urls)
-    sold_car_urls = set(p_car_urls) - set(r_car_urls)
-    return new_car_urls, sold_car_urls
-
-
-def split_car(url_price):
-    '''
-    input : url///price 으로 된 str list
-    ouput : url 과 price를 split ,price list 와 url list로  반환
-    '''
-    price = list()
-    url = list()
-    for item in url_price:
-        try:
-            price.append(item.split('///')[1])
-        except:
-            pass
-        url.append(item.split('///')[0])
-    return url, price
-'''
->>> main
-'''
-server_num = int(sys.argv[1])
-ssh_manager = SSHManager()
-ssh_manager.create_ssh_client(
-    "133.186.150.193", "centos", "gozjRjwu~!", key_filename=local_path + 'shopify.pem')  # 세션생성
-'''
->>> data load
-'''
-ssh_manager.get_file(remote_path + 'filtered_url_1.csv',
-                     local_path + 'filtered_url_1.csv')  # 파일다운로드
-ssh_manager.get_file(remote_path + 'filtered_url_2.csv',
-                     local_path + 'filtered_url_2.csv')  # 파일다운로드
-ssh_manager.get_file(remote_path + 'filtered_url_3.csv',
-                     local_path + 'filtered_url_3.csv')  # 파일다운로드
-ssh_manager.get_file(remote_path + 'filtered_url_4.csv',
-                     local_path + 'filtered_url_4.csv')  # 파일다운로드
-ssh_manager.get_file(remote_path + 'filtered_url_5.csv',
-                     local_path + 'filtered_url_5.csv')  # 파일다운로드
-ssh_manager.get_file(remote_path + 'filtered_url_6.csv',
-                     local_path + 'filtered_url_6.csv')  # 파일다운로드
-r_df_1 = pd.read_csv(local_path + 'filtered_url_1.csv')
-r_df_2 = pd.read_csv(local_path + 'filtered_url_2.csv')
-r_df_3 = pd.read_csv(local_path + 'filtered_url_3.csv')
-r_df_4 = pd.read_csv(local_path + 'filtered_url_4.csv')
-r_df_5 = pd.read_csv(local_path + 'filtered_url_5.csv')
-r_df_6 = pd.read_csv(local_path + 'filtered_url_6.csv')
-p_df = pd.read_csv(local_path + 'filtered_url.csv')
-r_car_urls = list(r_df_1['url']) + list(r_df_2['url']) + \
-    list(r_df_3['url']) + list(r_df_4['url']) + \
-    list(r_df_5['url']) + list(r_df_6['url'])
-p_car_urls = list(p_df['url'])
-os.remove(local_path + 'filtered_url_1.csv')
-os.remove(local_path + 'filtered_url_2.csv')
-os.remove(local_path + 'filtered_url_3.csv')
-os.remove(local_path + 'filtered_url_4.csv')
-os.remove(local_path + 'filtered_url_5.csv')
-os.remove(local_path + 'filtered_url_6.csv')
-'''
->>> 새로운 데이터 갱신
-'''
-r_df = pd.DataFrame(data=r_car_urls, columns=['url'])
-r_df.to_csv(local_path + 'filtered_url.csv')
-'''
->>>url,price 비교 후 신차,판완차 저장
-'''
-new_car, sold_car = compare_car(p_car_urls, r_car_urls)
-print(len(new_car))
-print(len(sold_car))
-new_url, new_price = split_car(new_car)
-sold_url, sold_price = split_car(sold_car)
-'''
->>> 판매 완료된 차량 저장
-'''
-sold_dict = {
-    "url": sold_url,
-    "price": sold_price
-}
-s_df = pd.DataFrame(sold_dict)
-s_df.to_csv(local_path +
-            'sold_car{server_num}.csv'.format(server_num=server_num), encoding='euc-kr')
-'''
->>>신규 등록차량 차량 정보 수집 !!!서버에 분배 
-'''
-
-per_num = len(new_url)//29
-if server_num * per_num > len(new_url):
-    new_url = new_url[per_num*(server_num-1):]
-else:
-    new_url = new_url[per_num*(server_num-1):per_num*(server_num)]
-start(new_url, server_num)
-# process_json()
-
-ssh_manager.send_file(local_path + 'result_t{server_num}.json'.format(server_num=server_num),
-                      remote_path + 'result_t{server_num}.json'.format(server_num=server_num))  # 파일전송
-ssh_manager.send_file(local_path + 'sold_car{server_num}.csv'.format(server_num=server_num),
-                      remote_path + 'sold_car{server_num}.csv'.format(server_num=server_num))  # 파일전송
-os.remove(
-    local_path + 'result_t{server_num}.json'.format(server_num=server_num))
-os.remove(
-    local_path + 'sold_car{server_num}.csv'.format(server_num=server_num))
-ssh_manager.close_ssh_client()  # 세션종료
