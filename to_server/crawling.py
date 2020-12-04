@@ -20,25 +20,10 @@ def start(urls, server_num, option_codes):
     for url in urls:
 
         temp = dict()
-        # try:
-        #     temp = get_car_info(
-        #         url, temp)
-        # except:
-        #     print("error in car info")
-        # try:
-        #     temp.update(get_history(
-        #         url, temp))
-        # except:
-        #     print("error in car history")
-        # try:
-        #     temp['Options'] = get_options(
-        #         url)
-        # except:
-        #     print("error in car options")
-        # try:
-        #     temp = get_checkdata(url, temp)
-        # except:
-        #     print("error in car checkdata")
+        # temp, carHistorySeq, chk_tag_url = get_car_info(url, temp)
+        # temp.update(get_history(url, temp, carHistorySeq))
+        # temp["Options"] = get_options(url, option_codes)
+        # temp = get_checkdata(url, temp, chk_tag_url)
         try:
             temp, carHistorySeq, chk_tag_url = get_car_info(url, temp)
         except Exception as e:
