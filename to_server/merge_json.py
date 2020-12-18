@@ -8,10 +8,11 @@ import sys
 >>> 수집한 json 병합하는 코드
 """
 # local_path = "/home/centos/result_from_servers/"
-date = 1213
+# day = datetime.today().strftime("%Y%m%d")
+day = 20201218
+date = day % 10000
 local_path = f"C:/Users/hckim/Desktop/아름드리/{date}/"
-day = datetime.today().strftime("%Y%m%d")
-day = 20201213
+
 if __name__ == "__main__":
     result = list()
     str_list = list()
